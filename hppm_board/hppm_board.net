@@ -1,0 +1,267 @@
+# EESchema Netlist Version 1.1 created  2011-12-17 18:10:10
+(
+ ( /4EE98705 PINTST +5Vb1 CONN_1
+  ( 1 N-000017 )
+ )
+ ( /4EE98668 PINTST +5Vg1 CONN_1
+  ( 1 N-000005 )
+ )
+ ( /4EE986C8 PINTST +5Vr1 CONN_1
+  ( 1 N-000018 )
+ )
+ ( /4EE91895 C2 C1b1 10µF
+  ( 1 N-000017 )
+  ( 2 N-000021 )
+ )
+ ( /4EE92195 C2 C1g1 10µF
+  ( 1 N-000005 )
+  ( 2 N-000019 )
+ )
+ ( /4EE8EFDE C2 C1r1 10µF
+  ( 1 N-000018 )
+  ( 2 N-000009 )
+ )
+ ( /4EE9188F C2 C2b1 1µF
+  ( 1 N-000007 )
+  ( 2 N-000021 )
+ )
+ ( /4EE9219B C2 C2g1 1µF
+  ( 1 N-000002 )
+  ( 2 N-000019 )
+ )
+ ( /4EE911CD C2 C2r1 1µF
+  ( 1 N-000003 )
+  ( 2 N-000009 )
+ )
+ ( /4EE91893 C2 C3b1 0.01µF
+  ( 1 N-000015 )
+  ( 2 N-000008 )
+ )
+ ( /4EE92197 C2 C3g1 0.01µF
+  ( 1 N-000006 )
+  ( 2 N-000013 )
+ )
+ ( /4EE907CF C2 C3r1 0.01µF
+  ( 1 N-000020 )
+  ( 2 N-000010 )
+ )
+ ( /4EE9188E C2 C4b1 1µF
+  ( 1 N-000007 )
+  ( 2 N-000004 )
+ )
+ ( /4EE9219C C2 C4g1 1µF
+  ( 1 N-000002 )
+  ( 2 N-000001 )
+ )
+ ( /4EE915DD C2 C4r1 1µF
+  ( 1 N-000003 )
+  ( 2 N-000011 )
+ )
+ ( /4EE91891 D0−216AA D1b1 10V_1A
+  ( 1 N-000021 )
+  ( 2 N-000008 )
+ )
+ ( /4EE92199 D0−216AA D1g1 10V_1A
+  ( 1 N-000019 )
+  ( 2 N-000013 )
+ )
+ ( /4EE90AF6 D0−216AA D1r1 10V_1A
+  ( 1 N-000009 )
+  ( 2 N-000010 )
+ )
+ ( /4EE91894 sod323-Custom D2b1 30V_100mA
+  ( 1 N-000017 )
+  ( 2 N-000015 )
+ )
+ ( /4EE92196 sod323-Custom D2g1 30V_100mA
+  ( 1 N-000005 )
+  ( 2 N-000006 )
+ )
+ ( /4EE8F638 sod323-Custom D2r1 30V_100mA
+  ( 1 N-000018 )
+  ( 2 N-000020 )
+ )
+ ( /4EE986F4 PINTST GNDb1 CONN_1
+  ( 1 N-000021 )
+ )
+ ( /4EE985F9 PINTST GNDg1 CONN_1
+  ( 1 N-000019 )
+ )
+ ( /4EE986A9 PINTST GNDr1 CONN_1
+  ( 1 N-000009 )
+ )
+ ( /4EE91890 NR6045 L1b1 4.5µH
+  ( 1 N-000007 )
+  ( 2 N-000008 )
+ )
+ ( /4EE9219A NR6045 L1g1 4.5µH
+  ( 1 N-000002 )
+  ( 2 N-000013 )
+ )
+ ( /4EE90BF7 NR6045 L1r1 6µH
+  ( 1 N-000003 )
+  ( 2 N-000010 )
+ )
+ ( /4EEA67A5 OVSPRGBCR4 LED1 OVSPRGBCR4
+  ( 1 N-000002 )
+  ( 2 N-000003 )
+  ( 3 N-000007 )
+  ( 4 N-000004 )
+  ( 5 N-000011 )
+  ( 6 N-000001 )
+ )
+ ( /4EE928F0 R8-Custom R1b1 .82Ohm
+  ( 1 N-000004 )
+  ( 2 N-000021 )
+ )
+ ( /4EE928FB R8-Custom R1g1 .82Ohm
+  ( 1 N-000001 )
+  ( 2 N-000019 )
+ )
+ ( /4EE928F8 R8-Custom R1r1 .82Ohm
+  ( 1 N-000011 )
+  ( 2 N-000009 )
+ )
+ ( /4EE9895C PINTST SIGb1 CONN_1
+  ( 1 N-000016 )
+ )
+ ( /4EE9891C PINTST SIGg1 CONN_1
+  ( 1 N-000014 )
+ )
+ ( /4EE98948 PINTST SIGr1 CONN_1
+  ( 1 N-000012 )
+ )
+ ( /4EE91898 tsot-6-Custom U1b1 LM3405
+  ( 1 N-000015 )
+  ( 2 N-000021 )
+  ( 3 N-000004 )
+  ( 4 N-000016 )
+  ( 5 N-000017 )
+  ( 6 N-000008 )
+ )
+ ( /4EE92192 tsot-6-Custom U1g1 LM3405
+  ( 1 N-000006 )
+  ( 2 N-000019 )
+  ( 3 N-000001 )
+  ( 4 N-000014 )
+  ( 5 N-000005 )
+  ( 6 N-000013 )
+ )
+ ( /4EE8EE26 tsot-6-Custom U1r1 LM3405
+  ( 1 N-000020 )
+  ( 2 N-000009 )
+  ( 3 N-000011 )
+  ( 4 N-000012 )
+  ( 5 N-000018 )
+  ( 6 N-000010 )
+ )
+)
+*
+{ Allowed footprints by component:
+$component C1b1
+ SM*
+ C?
+ C1-1
+$endlist
+$component C1g1
+ SM*
+ C?
+ C1-1
+$endlist
+$component C1r1
+ SM*
+ C?
+ C1-1
+$endlist
+$component C2b1
+ SM*
+ C?
+ C1-1
+$endlist
+$component C2g1
+ SM*
+ C?
+ C1-1
+$endlist
+$component C2r1
+ SM*
+ C?
+ C1-1
+$endlist
+$component C3b1
+ SM*
+ C?
+ C1-1
+$endlist
+$component C3g1
+ SM*
+ C?
+ C1-1
+$endlist
+$component C3r1
+ SM*
+ C?
+ C1-1
+$endlist
+$component C4b1
+ SM*
+ C?
+ C1-1
+$endlist
+$component C4g1
+ SM*
+ C?
+ C1-1
+$endlist
+$component C4r1
+ SM*
+ C?
+ C1-1
+$endlist
+$component D1b1
+ D?
+ S*
+$endlist
+$component D1g1
+ D?
+ S*
+$endlist
+$component D1r1
+ D?
+ S*
+$endlist
+$component D2b1
+ D?
+ S*
+$endlist
+$component D2g1
+ D?
+ S*
+$endlist
+$component D2r1
+ D?
+ S*
+$endlist
+$component R1b1
+ R?
+ SM0603
+ SM0805
+ R?-*
+ SM1206
+$endlist
+$component R1g1
+ R?
+ SM0603
+ SM0805
+ R?-*
+ SM1206
+$endlist
+$component R1r1
+ R?
+ SM0603
+ SM0805
+ R?-*
+ SM1206
+$endlist
+$endfootprintlist
+}

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Project xsi:noNamespaceSchemaLocation="Project.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Version current="2" valid="1" read="1"/>
+  <Format>Project</Format>
+  <Header>
+    <Program name="TopoR" version="5.2"/>
+    <GUID>{D0B3D219-267A-4407-A7DB-33B79C10B1A6}</GUID>
+    <Copyright></Copyright>
+    <Annotation>Project file</Annotation>
+    <ParentDocument/>
+    <ChangeLog/>
+  </Header>
+  <Document>
+    <LocalLibrary />
+    <Pcb>
+<File path=".\hppm_board.fsx" Folder="-1" isopened="1"/>
+    </Pcb>
+    <ARouteSessions>
+<Session name="hppm_board" date="2011-12-17 18:39:22" path=".\autoroute_hppm_board_111217183922\">
+<File path=".\autoroute_hppm_board_111217183922\hppm_board_2256-47sa.fsb" Folder="-1" isopened="0"/>
+</Session>
+<Session name="hppm_board" date="2011-12-17 18:41:38" path=".\autoroute_hppm_board_111217184138\">
+<File path=".\autoroute_hppm_board_111217184138\hppm_board_793-0sa.fsb" Folder="-1" isopened="0"/>
+</Session>
+<Session name="hppm_board" date="2011-12-17 19:25:22" path=".\autoroute_hppm_board_111217192522\">
+<File path=".\autoroute_hppm_board_111217192522\hppm_board_699-0sa.fsb" Folder="-1" isopened="1"/>
+</Session>
+    </ARouteSessions>
+  </Document>
+</Project>
