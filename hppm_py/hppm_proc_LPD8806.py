@@ -10,7 +10,7 @@ datar=30 #incoming number of values per second per channel, should match max
 pR=11
 pG=25
 pB=40
-outr=170 #framerate to output to arduino, over 170 is generally too fast
+outr=140 #framerate to output to arduino, over 140 is generally too fast
 fps=0 #arduino framerate limit, may overload buffer, 0-255, 0 is no limiting
 numLights=52 #number lights you have
 #a single strand of 32 lights strips is capable of addressing 65536 lights
@@ -124,7 +124,7 @@ def main():
         osc.addMsgHandler('/woB', setwoB)
         osct.start()
         #setup the arduino program
-        write(su,numLights,fps,fade,0)
+        write(su,numLights-1,fps,fade,0)
         while 1:
             avg()
             if mR==1:

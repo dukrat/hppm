@@ -1,19 +1,27 @@
 // Import the neccessary libraries, SPI is included with Arduino and
 #include <SPI.h>
 
+// Set one minus the number of wavemode instructions kept in memory at a
+// time and one minus the maximum number of lights that can be controlled
+// you can play with these numbers as needed, if you set them equal
+// the highest useable value for Mega (Atmega2560) is 312 and the
+// highest useable value for Uno (Atmega328) is unknown but close to 64
+#define const_wave_states_minus_one 312
+#define const_num_lights_minus_one 312
+
 // Specify the pixel values used for various signals, must match python.
-uint8_t pA=255; //whole strip solid color
-uint8_t su=254; //set numLights, fps, fade, reserved
-uint8_t ns=250; //single pixel
+#define const_pA 255 //whole strip solid color
+#define const_su 254 //set numLights, fps, fade, reserved
+#define const_ns 250 //single pixel
 //start wave on color origin
-uint8_t cwR=251;
-uint8_t cwG=252;
-uint8_t cwB=253;
+#define const_cwR 251
+#define const_cwG 252
+#define const_cwB 253
 // DI (with the white line)  connects to pin 11 (or 51 if you have a Mega)
 // CI connects to pin 13 (or 52 if you have a Mega)
 
-uint8_t pwr=12; // pin for controlling the power supply
-uint8_t i; //incoming instruction value
+#define const_pwr 12 // pin for controlling the power supply
+uint8_t inst; //incoming instruction value
 uint8_t p8[2]; //incoming pixel values
 uint16_t p; //refactored pixel value
 uint8_t r; //incoming data values
@@ -32,17 +40,17 @@ uint8_t lB=0;
 uint16_t rowR=0;
 uint16_t rowG=0;
 uint16_t rowB=0;
-uint16_t arrR[313][3];
-uint16_t arrG[313][3];
-uint16_t arrB[313][3];
-uint16_t arrP[313][3];
+uint16_t arrR[const_wave_states_minus_one+1][3];
+uint16_t arrG[const_wave_states_minus_one+1][3];
+uint16_t arrB[const_wave_states_minus_one+1][3];
+uint16_t arrP[const_num_lights_minus_one+1][3];
 
 void setup() {
   // Start the serial connection
   Serial.begin(115200);
   // Turn the power supply on
-  pinMode(pwr,OUTPUT);
-  digitalWrite(pwr,LOW);
+  pinMode(const_pwr,OUTPUT);
+  digitalWrite(const_pwr,LOW);
   // Start the SPI connection
   SPI.begin();
   SPI.setBitOrder(MSBFIRST);
@@ -53,30 +61,37 @@ void setup() {
 
 void loop(){
   while (Serial.available()>=6){
-    i=Serial.read();
+    inst=Serial.read();
     p8[1]=Serial.read();
     p8[0]=Serial.read();
     p=*(uint16_t *)&p8;
     r=Serial.read();
     g=Serial.read();
     b=Serial.read();
-    if (i==pA){
+    if (inst==const_pA){
       solidColor(r,g,b);
       show();
-    } else if (i==su){
+    } else if (inst==const_su){
       setupvars(g,r,p);
-    } else if (i==cwR){
+    } else if (inst==const_cwR){
       colorwaveR(g,r,p);
       show();
-    } else if (i==cwG){
+    } else if (inst==const_cwG){
       colorwaveG(g,r,p);
       show();
-    } else if (i==cwB){
+    } else if (inst==const_cwB){
       colorwaveB(g,r,p);
       show();
-    } else{
+    } else if (inst==const_ns){
       setPixelColor(p,r,g,b);
       show();
+    } else {
+      solidColor(255,0,0);
+      delay(333);
+      solidColor(0,255,0);
+      delay(333);
+      solidColor(0,0,255);
+      delay(333);
     }
   }
 }
@@ -88,22 +103,31 @@ void colorwaveR(uint8_t r, uint8_t g, uint16_t b){
     arrR[rowR][0]=lR;
     arrR[rowR][1]=b;
     arrR[rowR][2]=b;
-    rowR=(rowR+1)%slen;
-    for (int i=0; i < slen; i++){
+    if (const_wave_states_minus_one == 65535){
+      rowR=(rowR+1);
+    } else {
+      rowR=(rowR+1)%(const_wave_states_minus_one+1);
+    }
+    for (uint16_t i=0; i <= slen; i++){
       arrP[i][0]=0;
     }
-    for (int j=0; j < slen-1; j++){
-      int i=(rowR+j)%slen;
-      if (arrR[i][0]-fade > -1){
+    uint16_t i;
+    for (uint16_t j=0; j < const_wave_states_minus_one; j++){
+      if (const_wave_states_minus_one == 65535){
+        i=(rowR+j);
+      } else {
+        i=(rowR+j)%(const_wave_states_minus_one+1);
+      }
+      if (arrR[i][0]-fade <= arrR[i][0]){
         arrR[i][0]=arrR[i][0]-fade;
       } else if (arrR[i][0] != 0){
         arrR[i][0]=0;
       }
-      if (arrR[i][2]+1 < slen){
+      if (arrR[i][2]+1 <= slen && arrR[i][2]+1 > arrR[i][2]){
         arrR[i][2]=arrR[i][2]+1;
         arrP[arrR[i][2]][0]=arrP[arrR[i][2]][0]+arrR[i][0];
       } 
-      if (arrR[i][1]-1 > -1){
+      if (arrR[i][1]-1 < arrR[i][1]){
         arrR[i][1]=arrR[i][1]-1;
         arrP[arrR[i][1]][0]=arrP[arrR[i][1]][0]+arrR[i][0];
       }
@@ -121,22 +145,31 @@ void colorwaveG(uint8_t r, uint8_t g, uint16_t b){
     arrG[rowG][0]=lG;
     arrG[rowG][1]=b;
     arrG[rowG][2]=b;
-    rowG=(rowG+1)%slen;
-    for (int i=0; i < slen; i++){
+    if (const_wave_states_minus_one == 65535){
+      rowG=(rowG+1);
+    } else {
+      rowG=(rowG+1)%(const_wave_states_minus_one+1);
+    }
+    for (uint16_t i=0; i <= slen; i++){
       arrP[i][1]=0;
     }
-    for (int j=0; j < slen-1; j++){
-      int i=(rowG+j)%slen;
-      if (arrG[i][0]-fade > -1){
+    uint16_t i;
+    for (uint16_t j=0; j < const_wave_states_minus_one; j++){
+      if (const_wave_states_minus_one == 65535){
+        i=(rowG+j);
+      } else {
+        i=(rowG+j)%(const_wave_states_minus_one+1);
+      }
+      if (arrG[i][0]-fade <= arrG[i][0]){
         arrG[i][0]=arrG[i][0]-fade;
       } else if (arrG[i][0] != 0){
         arrG[i][0]=0;
       }
-      if (arrG[i][2]+1 < slen){
+      if (arrG[i][2]+1 <= slen && arrG[i][2]+1 > arrG[i][2]){
         arrG[i][2]=arrG[i][2]+1;
         arrP[arrG[i][2]][1]=arrP[arrG[i][2]][1]+arrG[i][0];
       } 
-      if (arrG[i][1]-1 > -1){
+      if (arrG[i][1]-1 < arrG[i][1]){
         arrG[i][1]=arrG[i][1]-1;
         arrP[arrG[i][1]][1]=arrP[arrG[i][1]][1]+arrG[i][0];
       }
@@ -154,22 +187,31 @@ void colorwaveB(uint8_t r, uint8_t g, uint16_t b){
     arrB[rowB][0]=lB;
     arrB[rowB][1]=b;
     arrB[rowB][2]=b;
-    rowB=(rowB+1)%slen;
-    for (int i=0; i < slen; i++){
+    if (const_wave_states_minus_one == 65535){
+      rowB=(rowB+1);
+    } else {
+      rowB=(rowB+1)%(const_wave_states_minus_one+1);
+    }
+    for (uint16_t i=0; i <= slen; i++){
       arrP[i][2]=0;
     }
-    for (int j=0; j < slen-1; j++){
-      int i=(rowB+j)%slen;
-      if (arrB[i][0]-fade > -1){
+    uint16_t i;
+    for (uint16_t j=0; j < const_wave_states_minus_one; j++){
+      if (const_wave_states_minus_one == 65535){
+        i=(rowB+j);
+      } else {
+        i=(rowB+j)%(const_wave_states_minus_one+1);
+      }
+      if (arrB[i][0]-fade <= arrB[i][0]){
         arrB[i][0]=arrB[i][0]-fade;
       } else if (arrB[i][0] != 0){
         arrB[i][0]=0;
       }
-      if (arrB[i][2]+1 < slen){
+      if (arrB[i][2]+1 <= slen && arrB[i][2]+1 > arrB[i][2]){
         arrB[i][2]=arrB[i][2]+1;
         arrP[arrB[i][2]][2]=arrP[arrB[i][2]][2]+arrB[i][0];
       } 
-      if (arrB[i][1]-1 > -1){
+      if (arrB[i][1]-1 < arrB[i][1]){
         arrB[i][1]=arrB[i][1]-1;
         arrP[arrB[i][1]][2]=arrP[arrB[i][1]][2]+arrB[i][0];
       }
@@ -181,7 +223,7 @@ void colorwaveB(uint8_t r, uint8_t g, uint16_t b){
 }
 
 void solidColor(uint8_t r,uint8_t g,uint8_t b){
-  for (int i=0; i < slen; i++) {
+  for (uint16_t i=0; i <= slen; i++) {
       setPixelColor(i,r,g,b);
   }
 }
@@ -201,8 +243,8 @@ void setupvars(uint8_t r,uint8_t g,uint16_t b){
   fade=r;
   fps=g;
   slen=b;
-  for (int i=0; i < slen; i++){
-    for (int j=0; j < 3; j++){
+  for (uint16_t i=0; i <= const_wave_states_minus_one; i++){
+    for (uint8_t j=0; j < 3; j++){
       arrR[i][j]=0;
       arrG[i][j]=0;
       arrB[i][j]=0;
@@ -219,8 +261,8 @@ void setPixelColor(uint16_t p, uint8_t r, uint8_t g, uint8_t b){
 }
 
 void dis(){
-  for (int i=0; i < slen; i++){
-    for (int j=0; j < 3; j++){
+  for (uint16_t i=0; i <= slen; i++){
+    for (uint8_t j=0; j < 3; j++){
       SPDR = arrP[i][j];
       while(!(SPSR & (1<<SPIF)));
     }
