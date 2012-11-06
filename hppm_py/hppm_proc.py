@@ -1,27 +1,36 @@
-import hppm_colorkinetics as k
-global psyon, com, POST, pR, pG, pB, ourt, fps, numLights, woR, woG, woB, mR, mG, mB
-global wsR, wsG, wsB, pA, su, cwR, cwG, cwB, R, G, B, iR, iG, iB, tiR, tiG, tiB
-global wR, wG, wB, sR, sG, sB, lR, lG, lB, lW, nwR, nwG, nwB, port
+global psyon, com, pR, pG, pB, ourt, fps, sType, numLights, woR, woG, woB
+global mR, mG, mB, wsR, wsG, wsB, pA, su, cwR, cwG, cwB, R, G, B, iR, iG, iB
+global tiR, tiG, tiB, wR, wG, wB, sR, sG, sB, lR, lG, lB, lW, nwR, nwG, nwB
+global port, fadeR, fadeG, fadeB, lightOn, chngBProp
+
 psyon=0
 com='COM4'
-fade=2 #set the fade speed of wave mode, 0 is off, 2 works best for 64 lights
+#set the fade speed of wave mode, 0 is off, 2 works best for 64 lights
+fadeR=2
+fadeG=2
+fadeB=2
+lightOn=1 #0, lights off on shutdown 1, lights on on shutdown
+chngBProp=1 #if you send data in wave mode faster than the wave speed
+#you can either display that data right away on the wave start pixel, 1
+#or discard that data, 0
 
-datar=30 #incoming number of values per second per channel, should match arduino
+datar=30 #incoming number of values per second per channel, should match max
 #these are the pixel values where waves will start
 pR=11
 pG=25
 pB=40
-##pR=32
-##pG=32
-##pB=32
-outr=170 #framerate to output to arduino, over 170 is generally too fast
+outr=75 #framerate to output to arduino, over 75 is generally too fast
 fps=0 #arduino framerate limit, may overload buffer, 0-255, 0 is no limiting
+sType="LPD8806" #set to "LPD8806" or "WS2801", the strand type you have
 numLights=52 #number lights you have
 #a single strand of 32 lights strips is capable of addressing 65536 lights
-#the protocols in this program can address a max of 7 strips (224 lights)
-#however the atmega238 only has memory for 64 lights in wave mode
-#if you have atmega238 with more than 64 lights DON'T USE WAVE MODE
-#also if you get an something with more memory you need to update the arduino code
+#however the atmega238 only has memory for just over 64? lights in wave mode
+#using the normal sketch and ? lights using the extended sketch
+#the atmega2560 has memory for 313 lights in wave mode using the normal
+#sketch and ? lights in wave mode using the extended sketch
+#if you get an something with more memory you need to update the arduino code
+#DI connects to pin 11 (or 51 if you have a Mega)
+#CI connects to pin 13 (or 52 if you have a Mega)
 
 #if for some reason you are running without the max part you can set the initial mode here
 #this sets wavemode 0 off 1 on
@@ -29,21 +38,22 @@ woR=1
 woG=1
 woB=1
 #these set the main mode
-mR=0
-mG=0
-mB=0
+mR=0            #0 listen for audio
+mG=0            #1 test colors interlaced
+mB=0            #2 test colors sequentially
 #this is the wave speed delays max 255ms
 wsR=0
 wsG=0
 wsB=0
 #the pixel values used for various signals, should match arduino
 pA=255 #whole strip solid color
-su=254 #set fade, fps, numLights
+su=254 #set numLights, fps, protocol and maxBright, reserved
+ns=250 #single pixel
 #start wave on color origin
 cwR=251
 cwG=252
 cwB=253
-import OSC, serial, time, threading, datetime
+import OSC, serial, time, threading, datetime, struct
 R=[0]*datar
 G=[0]*datar
 B=[0]*datar
@@ -124,7 +134,24 @@ def main():
         osc.addMsgHandler('/woB', setwoB)
         osct.start()
         #setup the arduino program
-        write(su,fade,fps,numLights)
+        global maxBright
+        if sType=="LPD8806":
+            sNum=0
+            maxBright=127
+        elif sType=="WS2801":
+            sNum=2
+            maxBright=255
+        else:
+            print time.strftime('[%H:%M:%S]')+' Incorrect sType specified.'
+            osc.close()
+            osct.join()
+            time.sleep(.100)
+            if lightOn==0:
+                sendSCH(0,0,0)
+            else:
+                sendSCH(maxBright,maxBright,maxBright)
+            print time.strftime('[%H:%M:%S]')+' Program exited.'
+        write(su,numLights-1,fps,chngBProp+sNum,0)
         while 1:
             avg()
             if mR==1:
@@ -150,71 +177,69 @@ def main():
     except KeyboardInterrupt: #this does not work if psyco is on
         osc.close()
         osct.join()
-        sendSC("R",0)
-        sendSC("G",0)
-        sendSC("B",0)
-        k.exit()
+        time.sleep(.100)
+        if lightOn==0:
+            sendSCH(0,0,0)
+        else:
+            sendSCH(maxBright,maxBright,maxBright)  
         print time.strftime('[%H:%M:%S]')+' Program exited.'
         
 def colorR():
     global wR
-#    if nwR!=wR:
     wR=nwR
     sendT("R",wR)
 
 def colorG():
     global wG
-#    if nwG!=wG:
     wG=nwG
     sendT("G",wG)
 
 def colorB():
     global wB
-#    if nwB!=wB:
     wB=nwB
     sendT("B",wB)
 
 def testR():
     global tiR
-    if tiR>127:
-        sendT("R",254-tiR)
+    if tiR>maxBright:
+        sendT("R",(maxBright*2)-tiR)
     else:
         sendT("R",tiR)
-    tiR=(tiR+1)%254
+    tiR=(tiR+1)%(maxBright*2)
 
 def testG():
     global tiG
-    if tiG>127:
-        sendT("G",254-tiG)
+    if tiG>maxBright:
+        sendT("G",(maxBright*2)-tiG)
     else:
         sendT("G",tiG)
-    tiG=(tiG+1)%254
+    tiG=(tiG+1)%(maxBright*2)
 
 def testB():
     global tiB
-    if tiB>127:
-        sendT("B",254-tiB)
+    if tiB>maxBright:
+        sendT("B",(maxBright*2)-tiB)
     else:
         sendT("B",tiB)
-    tiB=(tiB+1)%254
+    tiB=(tiB+1)%(maxBright*2)
 
 def testsR():
-    for i in xrange(128):
+    for i in xrange(maxBright+1):
         sendT("R",i)
-    for i in xrange(127):
-        sendT("R",126-i)
+    for i in xrange(maxBright):
+        sendT("R",maxBright-1-i)
 
 def testsG():
-    for i in xrange(128):
+    for i in xrange(maxBright+1):
         sendT("G",i)
-    for i in xrange(127):
-        sendT("G",126-i)
+    for i in xrange(maxBright):
+        sendT("G",maxBright-1-i)
 
 def testsB():
-    for i in xrange(128):
+    for i in xrange(maxBright+1):
         sendT("B",i)
-    for i in xrange(127):
-        sendT("B",126-i)
+    for i in xrange(maxBright):
+        sendT("B",maxBright-1-i)
 
 def avg():
     global nwR, nwG, nwB
@@ -242,22 +267,22 @@ def avg():
 
 def setR(NULL1,NULL2,nR,NULL3):
     global R, iR
-    if nR[0]>127:
-        nR[0]=127
+    if nR[0]>maxBright:
+        nR[0]=maxBright
     iR=(iR+1)%datar
     R[iR]=nR[0]
 
 def setG(NULL1,NULL2,nG,NULL3):
     global G, iG
-    if nG[0]>127:
-        nG[0]=127
+    if nG[0]>maxBright:
+        nG[0]=maxBright
     iG=(iG+1)%datar
     G[iG]=nG[0]
 
 def setB(NULL1,NULL2,nB,NULL3):
     global B, iB
-    if nB[0]>127:
-        nB[0]=127
+    if nB[0]>maxBright:
+        nB[0]=maxBright
     iB=(iB+1)%datar
     B[iB]=nB[0]
 
@@ -326,7 +351,7 @@ def setwsB(NULL1,NULL2,nwsB,NULL3):
     global wsB
     wsB=nwsB[0]
     print time.strftime('[%H:%M:%S]')+' Blue wave delay: '+str(1/wsB)+'ms betweenjumps .'
-
+    
 def setwoR(NULL1,NULL2,nwoR,NULL3):
     global woR
     woR=nwoR[0]
@@ -370,53 +395,59 @@ def sendT(cV,dV):
 
 def sendSC(cV,dV):
     global lR, lG, lB
-    if cV=="R" and dV!=lR:
+    if cV=="R":
         lR=dV
-        write(pA,lR,lG,lB)
-    elif cV=="G" and dV!=lG:
+        write(pA,0,lR,lG,lB)
+    elif cV=="G":
         lG=dV
-        write(pA,lR,lG,lB)
-    elif cV=="B" and dV!=lB:
+        write(pA,0,lR,lG,lB)
+    elif cV=="B":
         lB=dV
-        write(pA,lR,lG,lB)
+        write(pA,0,lR,lG,lB)
 
 def sendCW(cV,dV):
     global lR, lG, lB
-    if cV=="R" and dV!=lR:
+    if cV=="R":
         lR=dV
-        write(cwR,lR,wsR,pR)
-    elif cV=="G" and dV!=lG:
+        write(cwR,pR,wsR,lR,fadeR)
+    elif cV=="G":
         lG=dV
-        write(cwG,lG,wsG,pG)
-    elif cV=="B" and dV!=lB:
+        write(cwG,pG,wsG,lG,fadeG)
+    elif cV=="B":
         lB=dV
-        write(cwB,lB,wsB,pB)
+        write(cwB,pB,wsB,lB,fadeB)
 
-def write(p,r,g,b):
+def sendSCH(r,g,b):
+    global lR, lG, lB
+    lR=r
+    lG=g
+    lB=b
+    write(pA,0,lR,lG,lB)
+
+def write(i,p,r,g,b):
     s=0
     while s==0:
         global lW
         if time.clock()-lW>=(1./outr):
             lW=time.clock()
-            port.write(bytearray([chr(p),chr(r),chr(g),chr(b)]))
-            k.loop(p,r*2,g*2,b*2)
+            port.write(bytearray(struct.pack("!BHBBB",i,p,r,g,b)))
             s=1
 
 #this sends a solid color by addressing each light, it is slow
 #I include it only for testing purposes
 def sendSCslow(cV,dV):
     global lR, lG, lB
-    if cV=="R" and dV!=lR:
+    if cV=="R":
         lR=dV
         for i in xrange(numLights):
-            write(i,lR,lG,lB)
-    elif cV=="G" and dV!=lG:
+            write(ns,i,lR,lG,lB)
+    elif cV=="G":
         lG=dV
         for i in xrange(numLights):
-            write(i,lR,lG,lB)
-    elif cV=="B" and dV!=lB:
+            write(ns,i,lR,lG,lB)
+    elif cV=="B":
         lB=dV
         for i in xrange(numLights):
-            write(i,lR,lG,lB)
+            write(ns,i,lR,lG,lB)
 
 main()
