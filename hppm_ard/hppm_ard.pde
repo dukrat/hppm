@@ -117,10 +117,13 @@ void loop(){
       show();
     } else {
       solidColor(ledBright,0,0);
+      show();
       delay(333);
       solidColor(0,ledBright,0);
+      show();
       delay(333);
       solidColor(0,0,ledBright);
+      show();
       delay(333);
     }
   }
