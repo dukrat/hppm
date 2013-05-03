@@ -210,7 +210,7 @@ void colorwaveG(uint8_t r, uint8_t g, uint16_t b, uint8_t p){
       if (readarrCc(def_arrGc, i)-p > 0){
         writearrCc(def_arrGc, i, readarrCc(def_arrGc, i)-p);
       } else if (readarrCc(def_arrGc, i) != 0){
-        writearrCc(def_arrGc, i, 0);
+        writearrCc(def_arrGc, i, 0); 
       }
       if (readarrCi(def_arrGi, i, 1)+1 <= slen && readarrCi(def_arrGi, i, 1)+1 > readarrCi(def_arrGi, i, 1)){
         writearrCi(def_arrGi, i, 1, readarrCi(def_arrGi, i, 1)+1);
@@ -413,19 +413,25 @@ void writearrCc(uint8_t a, uint16_t p, uint8_t v){
     switch (a) {
       case 0:
         arrRc1[p]=v;
+        break;
       case 1:
         arrGc1[p]=v;
+        break;
       case 2:
         arrBc1[p]=v;
+        break;
     }
   } else {
     switch (a) {
       case 0:
         arrRc2[p-32768]=v;
+        break;
       case 1:
         arrGc2[p-32768]=v;
+        break;
       case 2:
         arrBc2[p-32768]=v;
+        break;
     }
   }
 }
@@ -435,19 +441,25 @@ uint8_t readarrCc(uint8_t a, uint16_t p){
     switch (a) {
       case 0:
         return arrRc1[p];
+        break;
       case 1:
         return arrGc1[p];
+        break;
       case 2:
         return arrBc1[p];
+        break;
     }
   } else {
     switch (a) {
       case 0:
         return arrRc2[p-32768];
+        break;
       case 1:
         return arrGc2[p-32768];
+        break;
       case 2:
         return arrBc2[p-32768];
+        break;
     }
   }
 }
@@ -457,19 +469,25 @@ void writearrCi(uint8_t a, uint16_t p1, bool p2, uint16_t v){
     switch (a) {
       case 0:
         arrRi1[p1][p2]=v;
+        break;
       case 1:
         arrGi1[p1][p2]=v;
+        break;
       case 2:
         arrBi1[p1][p2]=v;
+        break;
     }
   } else {
     switch (a) {
       case 0:
         arrRi2[p1-32768][p2]=v;
+        break;
       case 1:
         arrGi2[p1-32768][p2]=v;
+        break;
       case 2:
         arrBi2[p1-32768][p2]=v;
+        break;
     }
   }
 }
@@ -479,19 +497,25 @@ uint16_t readarrCi(uint8_t a, uint16_t p1, bool p2){
     switch (a) {
       case 0:
         return arrRi1[p1][p2];
+        break;
       case 1:
         return arrGi1[p1][p2];
+        break;
       case 2:
         return arrBi1[p1][p2];
+        break;
     }
   } else {
     switch (a) {
       case 0:
         return arrRi2[p1-32768][p2];
+        break;
       case 1:
         return arrGi2[p1-32768][p2];
+        break;
       case 2:
         return arrBi2[p1-32768][p2];
+        break;
     }
   }
 }
@@ -511,6 +535,14 @@ uint8_t readarrP(uint16_t p1, uint8_t p2){
     return arrP2[p1-32768][p2];
   }
 }
+
+//void dis(){
+//  for (uint16_t i=0; i <= slen; i++){
+//    Serial.write(readarrP(i, 0));
+//    Serial.write(readarrP(i, 1));
+//    Serial.write(readarrP(i, 2));
+//  }
+//}
 
 void dis(){
   //if ledBright is 127 we use the LPD8806 protocol
