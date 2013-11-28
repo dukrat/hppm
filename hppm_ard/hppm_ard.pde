@@ -557,7 +557,7 @@ void dis(){
     }
     llen = ((slen + 64) / 64) *3;
     while(llen--) SPI.transfer(0);
-    delay(1);
+//    delay(1);
   // if ledBright is anything else (can only be 255) we use WS2801 protocol
   } else {
       for (uint16_t i=0; i <= slen; i++){
@@ -566,7 +566,7 @@ void dis(){
         while(!(SPSR & (1<<SPIF)));
       }
     }
-    delay(1);
+//    delay(1);
   }
 }
 
