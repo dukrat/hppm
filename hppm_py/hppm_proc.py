@@ -1,7 +1,7 @@
-global psyon, com, pR, pG, pB, ourt, fps, sType, numLights, woR, woG, woB
+global psyon, com, dpR, dpG, dpB, ourt, fps, sType, numLights, woR, woG, woB
 global mR, mG, mB, wsR, wsG, wsB, pA, su, cwR, cwG, cwB, R, G, B, iR, iG, iB
 global tiR, tiG, tiB, wR, wG, wB, sR, sG, sB, lR, lG, lB, lW, nwR, nwG, nwB
-global port, fadeR, fadeG, fadeB, lightOn, chngBProp
+global port, fadeR, fadeG, fadeB, lightOn, chngBProp, pR, pG, pB
 
 psyon=0
 com='COM4'
@@ -13,12 +13,25 @@ lightOn=1 #0, lights off on shutdown 1, lights on on shutdown
 chngBProp=1 #if you send data in wave mode faster than the wave speed
 #you can either display that data right away on the wave start pixel, 1
 #or discard that data, 0
+#this is for the random walk set you can control your color set with this
+#very simple implementation for now may make color changes smoother later
+minrwR=0
+maxrwR=127
+minrwG=0
+maxrwG=127
+minrwB=0
+maxrwB=127
 
 datar=30 #incoming number of values per second per channel, should match max
-#these are the pixel values where waves will start
-pR=11
-pG=25
-pB=40
+#these are the pixels where waves will start
+dpR=11
+dpG=25
+dpB=40
+#set these to 1 to randomize the pixel that color waves start on
+rpR=0
+rpG=0
+rpB=0
+srp=0 #if set to 1 all colors will use the pixel location for G
 outr=80 #framerate to output to arduino, over 80 is generally too fast
 fps=0 #arduino framerate limit, may overload buffer, 0-255, 0 is no limiting
 sType="LPD8806" #set to "LPD8806" or "WS2801", the strand type you have
@@ -41,6 +54,7 @@ woB=1
 mR=0            #0 listen for audio
 mG=0            #1 test colors interlaced
 mB=0            #2 test colors sequentially
+                #3 random color walk
 #this is the wave speed delays max 255ms
 wsR=0
 wsG=0
@@ -53,7 +67,7 @@ ns=250 #single pixel
 cwR=251
 cwG=252
 cwB=253
-import OSC, serial, time, threading, datetime, struct
+import OSC, serial, time, threading, datetime, struct, random
 R=[0]*datar
 G=[0]*datar
 B=[0]*datar
@@ -73,6 +87,9 @@ lR=0
 lG=0
 lB=0
 lW=0
+pR=dpR
+pG=dpG
+pB=dpB
 if psyon:
     try:
         import psyco
@@ -158,18 +175,24 @@ def main():
                 testR()
             elif mR==2:
                 testsR()
+            elif mR==3:
+                rwalkR()
             else:
                 colorR()
             if mG==1:
                 testG()
             elif mG==2:
                 testsG()
+            elif mG==3:
+                rwalkG()
             else:
                 colorG()
             if mB==1:
                 testB()
             elif mB==2:
                 testsB()
+            elif mB==3:
+                rwalkB()
             else:
                 colorB()
             if psyon:
@@ -241,6 +264,15 @@ def testsB():
     for i in xrange(maxBright):
         sendT("B",maxBright-1-i)
 
+def rwalkR():
+    sendT("R",random.randint(minrwR, maxrwR))
+    
+def rwalkG():
+    sendT("G",random.randint(minrwG, maxrwG))
+
+def rwalkB():
+    sendT("B",random.randint(minrwB, maxrwB))
+    
 def avg():
     global nwR, nwG, nwB
     aR=R
@@ -406,15 +438,31 @@ def sendSC(cV,dV):
         write(pA,0,lR,lG,lB)
 
 def sendCW(cV,dV):
-    global lR, lG, lB
+    global lR, lG, lB, pR, pG, pB
     if cV=="R":
         lR=dV
+        if srp==1:
+            pR=pG
+        elif rpR==1:
+            pR=random.randint(0,numLights-1)
+        else:
+            pR=dpR
         write(cwR,pR,wsR,lR,fadeR)
     elif cV=="G":
         lG=dV
+        if rpG==1:
+            pG=random.randint(0,numLights-1)
+        else:
+            pG=dpG
         write(cwG,pG,wsG,lG,fadeG)
     elif cV=="B":
         lB=dV
+        if srp==1:
+            pB=pG
+        elif rpB==1:
+            pB=random.randint(0,numLights-1)
+        else:
+            pB=dpB
         write(cwB,pB,wsB,lB,fadeB)
 
 def sendSCH(r,g,b):
