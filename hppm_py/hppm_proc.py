@@ -55,7 +55,7 @@ mR=0            #0 listen for audio
 mG=0            #1 test colors interlaced
 mB=0            #2 test colors sequentially
                 #3 random color walk
-#this is the wave speed delays max 255ms
+#this is the wave speed delays max 255ms (251 if you want to stay in pixel sync)
 wsR=0
 wsG=0
 wsB=0
@@ -171,14 +171,6 @@ def main():
         write(su,numLights-1,fps,chngBProp+sNum,0)
         while 1:
             avg()
-            if mR==1:
-                testR()
-            elif mR==2:
-                testsR()
-            elif mR==3:
-                rwalkR()
-            else:
-                colorR()
             if mG==1:
                 testG()
             elif mG==2:
@@ -187,6 +179,14 @@ def main():
                 rwalkG()
             else:
                 colorG()
+            if mR==1:
+                testR()
+            elif mR==2:
+                testsR()
+            elif mR==3:
+                rwalkR()
+            else:
+                colorR()
             if mB==1:
                 testB()
             elif mB==2:
