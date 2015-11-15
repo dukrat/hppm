@@ -1,4 +1,7 @@
 // Import the neccessary libraries, SPI is included with Arduino
+// NeoHWSerial is optional and available from 
+// https://github.com/SlashDevin/NeoHWSerial/tree/master/1.6.5r2
+// #include <NeoHWSerial.h>
 #include <SPI.h>
 
 // Specify the pixel values used for various signals, must match python.
@@ -59,10 +62,19 @@ arr8c3 *arrP2;
 #define def_arrRi 0
 #define def_arrGi 1
 #define def_arrBi 2
+// Set the number of bytes in an instruction
+#define def_instlen 6
+// Set to one less than def_instlen
+#define def_instlenm1 5
 
 void setup() {
-  // Start the serial connection
-  Serial.begin(115200);
+// Start the serial connection
+#ifdef NeoHWSerial_h
+  NeoSerial.attachInterrupt(procSer);
+  NeoSerial.begin(9600);
+#else
+  Serial.begin(9600);
+#endif
   // Turn the power supply on
   pinMode(def_pwr,OUTPUT);
   digitalWrite(def_pwr,LOW);
@@ -89,8 +101,31 @@ void setup() {
   arrP2=(arr8c3 *)malloc(0);
 }
 
+#ifdef NeoHWSerial_h
+uint8_t serialInd=0;
+uint8_t serialInst[def_instlen];
+
+void procSer(uint8_t i_b) {
+  serialInst[serialInd]=i_b;
+  if (serialInd==def_instlenm1){
+    inst=serialInst[0];
+    ip8[1]=serialInst[1];
+    ip8[0]=serialInst[2];
+    ip=*(uint16_t *)&ip8;
+    ir=serialInst[3];
+    ig=serialInst[4];
+    ib=serialInst[5];
+  }
+  NeoSerial.println(serialInst[serialInd]);
+  NeoSerial.println(serialInd);
+  serialInd=(serialInd+1)%def_instlen;
+}
+
 void loop(){
-  while (Serial.available()>=6){
+  procInst();
+#else
+void loop(){
+  while (Serial.available()>=def_instlen){
     inst=Serial.read();
     ip8[1]=Serial.read();
     ip8[0]=Serial.read();
@@ -98,35 +133,39 @@ void loop(){
     ir=Serial.read();
     ig=Serial.read();
     ib=Serial.read();
+    procInst();
+  }
+#endif
+}
 
-    if (inst==def_cwR){
-      colorwaveR(ig,ir,ip,ib);
-      show();
-    } else if (inst==def_cwG){
-      colorwaveG(ig,ir,ip,ib);
-      show();
-    } else if (inst==def_cwB){
-      colorwaveB(ig,ir,ip,ib);
-      show();
-    } else if (inst==def_pA){
-      solidColor(ir,ig,ib);
-      show();
-    } else if (inst==def_ns){
-      setPixelColor(ip,ir,ig,ib);
-      show();
-    } else if (inst==def_su){
-      setupvars(ig,ir,ip);
-    } else {
-      solidColor(ledBright,0,0);
-      show();
-      delay(333);
-      solidColor(0,ledBright,0);
-      show();
-      delay(333);
-      solidColor(0,0,ledBright);
-      show();
-      delay(333);
-    }
+void procInst(){
+  if (inst==def_cwR){
+    colorwaveR(ig,ir,ip,ib);
+    show();
+  } else if (inst==def_cwG){
+    colorwaveG(ig,ir,ip,ib);
+    show();
+  } else if (inst==def_cwB){
+    colorwaveB(ig,ir,ip,ib);
+    show();
+  } else if (inst==def_pA){
+    solidColor(ir,ig,ib);
+    show();
+  } else if (inst==def_ns){
+    setPixelColor(ip,ir,ig,ib);
+    show();
+  } else if (inst==def_su){
+    setupvars(ig,ir,ip);
+  } else {
+    solidColor(ledBright,0,0);
+    show();
+    delay(333);
+    solidColor(0,ledBright,0);
+    show();
+    delay(333);
+    solidColor(0,0,ledBright);
+    show();
+    delay(333);
   }
 }
 
