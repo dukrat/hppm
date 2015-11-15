@@ -330,7 +330,6 @@ void setupvars(uint8_t r,uint8_t g,uint16_t b){
   free(arrBi2);
   free(arrP1);
   free(arrP2);
-  fix28135_malloc_bug();
   fps=g;
   slen=b;
   // set how to handle signal coming in faster than wave speed
@@ -356,8 +355,15 @@ void setupvars(uint8_t r,uint8_t g,uint16_t b){
     arrP2=(arr8c3 *)malloc(((slen+1)-32768) * 3 * sizeof(uint8_t));
   }
   //Calculate memory left for color wave arrays
-  alen=(((freeRam()-45)/15)-1);
-  //alen=20;
+  alen=(freeRam()/15)-10;
+//These are useful for debugging
+//  Serial.print("slen:");
+//  Serial.println(slen);
+//  Serial.print("alen:");
+//  Serial.println(alen);
+//  Serial.print("freemem:");
+//  Serial.println(freeRam());
+//  alen=20;
   //Create arrays
   if (alen+1<=32768) {
     arrRc1=(arr8c1 *)malloc((alen+1) * sizeof(uint8_t));
@@ -396,10 +402,9 @@ void setupvars(uint8_t r,uint8_t g,uint16_t b){
       writearrCi(def_arrGi, i, j, 0);
       writearrCi(def_arrBi, i, j, 0);
     }
-    
   }
   solidColor(0,0,0);
-  show();
+//  show();
 }
 
 void setPixelColor(uint16_t p, uint8_t r, uint8_t g, uint8_t b){
@@ -536,11 +541,15 @@ uint8_t readarrP(uint16_t p1, uint8_t p2){
   }
 }
 
+////You can use this to debug just comment out the real dis
 //void dis(){
 //  for (uint16_t i=0; i <= slen; i++){
-//    Serial.write(readarrP(i, 0));
-//    Serial.write(readarrP(i, 1));
-//    Serial.write(readarrP(i, 2));
+//    Serial.print(readarrP(i, 0),DEC);
+//    Serial.print("-");
+//    Serial.print(readarrP(i, 1),DEC);
+//    Serial.print("-");
+//    Serial.print(readarrP(i, 2),DEC);
+//    Serial.print("-");
 //  }
 //}
 
@@ -576,29 +585,3 @@ uint32_t freeRam () {
   return (uint32_t) &v - (__brkval == 0 ? (uint32_t) &__heap_start : (uint32_t) __brkval); 
 }
 
-// Everything below here is from http://arduino.cc/forum/index.php/topic,46948.0.html
-struct __freelist
-{
-  size_t sz;
-  struct __freelist *nx;
-};
-
-extern struct __freelist *__flp;
-extern uint8_t* __brkval;
-
-void fix28135_malloc_bug()
-  {
-    for (__freelist *fp = __flp, *lfp = 0; fp; fp = fp->nx)
-    {
-      if (((uint8_t*)fp + fp->sz + 2) == __brkval)
-      {
-        __brkval = (uint8_t*)fp;
-        if (lfp)
-          lfp->nx = 0;
-        else
-          __flp = 0;
-        break;
-      }
-      lfp = fp;
-    }
-  }

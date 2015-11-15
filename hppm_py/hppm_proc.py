@@ -37,10 +37,9 @@ fps=0 #arduino framerate limit, may overload buffer, 0-255, 0 is no limiting
 sType="LPD8806" #set to "LPD8806" or "WS2801", the strand type you have
 numLights=52 #number lights you have
 #a single strand of 32 lights strips is capable of addressing 65536 lights
-#however the atmega238 only has memory for just over 64? lights in wave mode
-#using the normal sketch and ? lights using the extended sketch
-#the atmega2560 has memory for 313 lights in wave mode using the normal
-#sketch and ? lights in wave mode using the extended sketch
+#however the atmega238 only has memory for just over ?64? lights
+#the atmega2560 has memory for 2560 lights, but only 428 lights for wave mode
+#to support a wave traveling the entirely of the strand
 #if you get an something with more memory you need to update the arduino code
 #DI connects to pin 11 (or 51 if you have a Mega)
 #CI connects to pin 13 (or 52 if you have a Mega)
