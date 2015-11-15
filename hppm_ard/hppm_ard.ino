@@ -98,12 +98,8 @@ void loop(){
     ir=Serial.read();
     ig=Serial.read();
     ib=Serial.read();
-    if (inst==def_pA){
-      solidColor(ir,ig,ib);
-      show();
-    } else if (inst==def_su){
-      setupvars(ig,ir,ip);
-    } else if (inst==def_cwR){
+
+    if (inst==def_cwR){
       colorwaveR(ig,ir,ip,ib);
       show();
     } else if (inst==def_cwG){
@@ -112,9 +108,14 @@ void loop(){
     } else if (inst==def_cwB){
       colorwaveB(ig,ir,ip,ib);
       show();
+    } else if (inst==def_pA){
+      solidColor(ir,ig,ib);
+      show();
     } else if (inst==def_ns){
       setPixelColor(ip,ir,ig,ib);
       show();
+    } else if (inst==def_su){
+      setupvars(ig,ir,ip);
     } else {
       solidColor(ledBright,0,0);
       show();
