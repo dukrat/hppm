@@ -96,7 +96,7 @@ if psyon:
     except ImportError:
         psyon=0
         pass
-port = serial.Serial('\\\\.\\'+com, 115200, timeout=0)
+port = serial.Serial('\\\\.\\'+com, 9600, timeout=0)
 
 def initBP(): #Test if BP is already online, may get out of some modes TBR
     port.write('##') #test string
