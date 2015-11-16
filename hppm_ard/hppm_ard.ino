@@ -1,8 +1,12 @@
 // Import the neccessary libraries, SPI is included with Arduino
-// NeoHWSerial is optional and available from 
+#include <SPI.h>
+// NeoHWSerial is optional (uncomment to use) and available from 
 // https://github.com/SlashDevin/NeoHWSerial/tree/master/1.6.5r2
 //#include <NeoHWSerial.h>
-#include <SPI.h>
+// If you are using NeoHWSerial there are three modes, define one of them
+//#define S_FAS // This version is the quickest but can drop instructions
+//#define S_REL // This version carries out every instruction
+//#define S_LOW // This version doesn't work and I'm not sure why
 
 // Specify the pixel values used for various signals, must match python.
 #define def_pA 255 //whole strip solid color
@@ -108,6 +112,8 @@ void setup() {
 }
 
 #ifdef NeoHWSerial_h
+#ifdef S_REL
+// This version carries out every instruction
 uint8_t serialInd=0;
 uint8_t serialInst[def_instlen];
 
@@ -121,53 +127,77 @@ void procSer(uint8_t i_b) {
     ir=serialInst[3];
     ig=serialInst[4];
     ib=serialInst[5];
+    procInst();
   }
   serialInd=(serialInd+1)%def_instlen;
   ser_l.write(def_ret);
 }
 
-//void procSer(uint8_t i_b) {
-//  serialInst[serialInd]=i_b;
-//  serialInd=(serialInd+1)%def_instlen;
-//}
+void loop() {
+}
+#endif
 
-//void procSer(uint8_t i_b) {
-//  switch(serialInd) {
-//    case 0:
-//      inst=i_b;
-//      break;
-//    case 1:
-//      ip8[1]=i_b;
-//      break;
-//    case 2:
-//      ip8[2]=i_b;
-//      ip=*(uint16_t *)&ip8;
-//      break;
-//    case 3:
-//      ir=i_b;
-//      break;
-//    case 4:
-//      ig=i_b;
-//      break;
-//    case 5:
-//      ib=i_b;
-//      break;
-//  }
-//  serialInd=(serialInd+1)%def_instlen;
-//  ser_l.write(def_ret);
-//}
+#ifdef S_LOW
+// This version doesn't work and I'm not sure why
+uint8_t serialInd=0;
+
+void procSer(uint8_t i_b) {
+  switch(serialInd) {
+    case 0:
+      inst=i_b;
+      break;
+    case 1:
+      ip8[1]=i_b;
+      break;
+    case 2:
+      ip8[2]=i_b;
+      ip=*(uint16_t *)&ip8;
+      break;
+    case 3:
+      ir=i_b;
+      break;
+    case 4:
+      ig=i_b;
+      break;
+    case 5:
+      ib=i_b;
+      break;
+  }
+  serialInd=(serialInd+1)%def_instlen;
+  ser_l.write(def_ret);
+}
 
 void loop(){
-//  if (serialInd==def_instlenm1){
-//    inst=serialInst[0];
-//    ip8[1]=serialInst[1];
-//    ip8[0]=serialInst[2];
-//    ip=*(uint16_t *)&ip8;
-//    ir=serialInst[3];
-//    ig=serialInst[4];
-//    ib=serialInst[5];
+  if (serialInd==def_instlenm1){
     procInst();
-//  }
+  }
+}
+#endif
+
+// This version is the quickest but can drop instructions
+#ifdef S_FAS
+uint8_t serialInd=0;
+uint8_t serialInst[def_instlen];
+
+void procSer(uint8_t i_b) {
+  serialInst[serialInd]=i_b;
+  serialInd=(serialInd+1)%def_instlen;
+  ser_l.write(def_ret);
+}
+
+void loop(){
+  if (serialInd==def_instlenm1){
+    inst=serialInst[0];
+    ip8[1]=serialInst[1];
+    ip8[0]=serialInst[2];
+    ip=*(uint16_t *)&ip8;
+    ir=serialInst[3];
+    ig=serialInst[4];
+    ib=serialInst[5];
+    procInst();
+  }
+}
+#endif
 #else
 uint8_t l_ava=0;
 uint8_t c_ava;
@@ -189,8 +219,8 @@ void loop(){
     l_ava =l_ava-def_instlen;
     procInst();
   }
-#endif
 }
+#endif
 
 void procInst(){
   if (inst==def_cwR){
@@ -498,7 +528,7 @@ void setupvars(uint8_t r,uint8_t g,uint16_t b){
     }
   }
   solidColor(0,0,0);
-//  show();
+  show();
 }
 
 void setPixelColor(uint16_t p, uint8_t r, uint8_t g, uint8_t b){

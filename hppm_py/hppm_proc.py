@@ -185,14 +185,16 @@ def main():
 	    colorB()
 	if psyon:
 	    time.sleep(0) #needed for psyco
-        print exit_v
 	if exit_v:
 	    osc.close()
 	    osct.join()
+                #we send these twice, as the first isn't always proc'd
 	    if lightOn==0:
 		sendSCH(0,0,0)
+                sendSCH(0,0,0)
 	    else:
 		sendSCH(maxBright,maxBright,maxBright)
+                sendSCH(maxBright,maxBright,maxBright)
 	    print time.strftime('[%H:%M:%S]')+' Program exited.'
             exit()
 
@@ -488,8 +490,8 @@ def write(i,p,r,g,b):
 #DEBUG                        print "waiting:"+str(port.inWaiting())
 			port.write(k)
 			s1=1
-##                    else:
-##                        print "DEBUG:"+incm_b
+#                    else:
+#                        print "DEBUG:"+incm_b
 #DEBUG                port.write(bytearray(struct.pack("!BHBBB",i,p,r,g,b)))
 	    lW=time.clock() 
 	    s=1
