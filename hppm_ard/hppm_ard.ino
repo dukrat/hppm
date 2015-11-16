@@ -1,7 +1,7 @@
 // Import the neccessary libraries, SPI is included with Arduino
 // NeoHWSerial is optional and available from 
 // https://github.com/SlashDevin/NeoHWSerial/tree/master/1.6.5r2
-// #include <NeoHWSerial.h>
+//#include <NeoHWSerial.h>
 #include <SPI.h>
 
 // Specify the pixel values used for various signals, must match python.
@@ -12,6 +12,8 @@
 #define def_cwR 251
 #define def_cwG 252
 #define def_cwB 253
+//return code to request next byre
+#define def_ret 249
 // DI (with the white line)  connects to pin 11 (or 51 if you have a Mega)
 // CI connects to pin 13 (or 52 if you have a Mega)
 
@@ -68,13 +70,16 @@ arr8c3 *arrP2;
 #define def_instlenm1 5
 
 void setup() {
-// Start the serial connection
+// Pick the serial library to use
 #ifdef NeoHWSerial_h
-  NeoSerial.attachInterrupt(procSer);
-  NeoSerial.begin(9600);
+#define ser_l NeoSerial
+  // Register the interrupt function
+  ser_l.attachInterrupt(procSer);
 #else
-  Serial.begin(9600);
+#define ser_l Serial
 #endif
+  // Start the serial connection
+  ser_l.begin(115200);
   // Turn the power supply on
   pinMode(def_pwr,OUTPUT);
   digitalWrite(def_pwr,LOW);
@@ -99,6 +104,7 @@ void setup() {
   arrBi2=(arr16c2 *)malloc(0);
   arrP1=(arr8c3 *)malloc(0);
   arrP2=(arr8c3 *)malloc(0);
+  ser_l.write(def_ret);
 }
 
 #ifdef NeoHWSerial_h
@@ -116,23 +122,71 @@ void procSer(uint8_t i_b) {
     ig=serialInst[4];
     ib=serialInst[5];
   }
-  NeoSerial.println(serialInst[serialInd]);
-  NeoSerial.println(serialInd);
   serialInd=(serialInd+1)%def_instlen;
+  ser_l.write(def_ret);
 }
 
+//void procSer(uint8_t i_b) {
+//  serialInst[serialInd]=i_b;
+//  serialInd=(serialInd+1)%def_instlen;
+//}
+
+//void procSer(uint8_t i_b) {
+//  switch(serialInd) {
+//    case 0:
+//      inst=i_b;
+//      break;
+//    case 1:
+//      ip8[1]=i_b;
+//      break;
+//    case 2:
+//      ip8[2]=i_b;
+//      ip=*(uint16_t *)&ip8;
+//      break;
+//    case 3:
+//      ir=i_b;
+//      break;
+//    case 4:
+//      ig=i_b;
+//      break;
+//    case 5:
+//      ib=i_b;
+//      break;
+//  }
+//  serialInd=(serialInd+1)%def_instlen;
+//  ser_l.write(def_ret);
+//}
+
 void loop(){
-  procInst();
+//  if (serialInd==def_instlenm1){
+//    inst=serialInst[0];
+//    ip8[1]=serialInst[1];
+//    ip8[0]=serialInst[2];
+//    ip=*(uint16_t *)&ip8;
+//    ir=serialInst[3];
+//    ig=serialInst[4];
+//    ib=serialInst[5];
+    procInst();
+//  }
 #else
+uint8_t l_ava=0;
+uint8_t c_ava;
+
 void loop(){
-  while (Serial.available()>=def_instlen){
-    inst=Serial.read();
-    ip8[1]=Serial.read();
-    ip8[0]=Serial.read();
+  c_ava=ser_l.available();
+  if (c_ava>l_ava){
+    l_ava=c_ava;
+    ser_l.write(def_ret);
+  }
+  while (l_ava>=def_instlen){
+    inst=ser_l.read();
+    ip8[1]=ser_l.read();
+    ip8[0]=ser_l.read();
     ip=*(uint16_t *)&ip8;
-    ir=Serial.read();
-    ig=Serial.read();
-    ib=Serial.read();
+    ir=ser_l.read();
+    ig=ser_l.read();
+    ib=ser_l.read();
+    l_ava =l_ava-def_instlen;
     procInst();
   }
 #endif
@@ -397,12 +451,12 @@ void setupvars(uint8_t r,uint8_t g,uint16_t b){
   //Calculate memory left for color wave arrays
   alen=(freeRam()/15)-10;
 //These are useful for debugging
-//  Serial.print("slen:");
-//  Serial.println(slen);
-//  Serial.print("alen:");
-//  Serial.println(alen);
-//  Serial.print("freemem:");
-//  Serial.println(freeRam());
+//  ser_l.print("slen:");
+//  ser_l.println(slen);
+//  ser_l.print("alen:");
+//  ser_l.println(alen);
+//  ser_l.print("freemem:");
+//  ser_l.println(freeRam());
 //  alen=20;
   //Create arrays
   if (alen+1<=32768) {
@@ -584,13 +638,14 @@ uint8_t readarrP(uint16_t p1, uint8_t p2){
 ////You can use this to debug just comment out the real dis
 //void dis(){
 //  for (uint16_t i=0; i <= slen; i++){
-//    Serial.print(readarrP(i, 0),DEC);
-//    Serial.print("-");
-//    Serial.print(readarrP(i, 1),DEC);
-//    Serial.print("-");
-//    Serial.print(readarrP(i, 2),DEC);
-//    Serial.print("-");
+//    ser_l.print(readarrP(i, 0),DEC);
+//    ser_l.print("-");
+//    ser_l.print(readarrP(i, 1),DEC);
+//    ser_l.print("-");
+//    ser_l.print(readarrP(i, 2),DEC);
+//    ser_l.print("-");
 //  }
+//  ser_l.println(slen);
 //}
 
 void dis(){

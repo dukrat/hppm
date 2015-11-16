@@ -1,63 +1,10 @@
+
+
 global psyon, com, dpR, dpG, dpB, ourt, fps, sType, numLights, woR, woG, woB
 global mR, mG, mB, wsR, wsG, wsB, pA, su, cwR, cwG, cwB, R, G, B, iR, iG, iB
 global tiR, tiG, tiB, wR, wG, wB, sR, sG, sB, lR, lG, lB, lW, nwR, nwG, nwB
-global port, fadeR, fadeG, fadeB, lightOn, chngBProp, pR, pG, pB
+global port, fadeR, fadeG, fadeB, lightOn, chngBProp, pR, pG, pB, exit_v
 
-psyon=0
-com='COM4'
-#set the fade speed of wave mode, 0 is off, 2 works best for 64 lights
-fadeR=2
-fadeG=2
-fadeB=2
-lightOn=1 #0, lights off on shutdown 1, lights on on shutdown
-chngBProp=1 #if you send data in wave mode faster than the wave speed
-#you can either display that data right away on the wave start pixel, 1
-#or discard that data, 0
-#this is for the random walk set you can control your color set with this
-#very simple implementation for now may make color changes smoother later
-minrwR=0
-maxrwR=127
-minrwG=0
-maxrwG=127
-minrwB=0
-maxrwB=127
-
-datar=30 #incoming number of values per second per channel, should match max
-#these are the pixels where waves will start
-dpR=11
-dpG=25
-dpB=40
-#set these to 1 to randomize the pixel that color waves start on
-rpR=0
-rpG=0
-rpB=0
-srp=0 #if set to 1 all colors will use the pixel location for G
-outr=80 #framerate to output to arduino, over 80 is generally too fast
-fps=0 #arduino framerate limit, may overload buffer, 0-255, 0 is no limiting
-sType="LPD8806" #set to "LPD8806" or "WS2801", the strand type you have
-numLights=52 #number lights you have
-#a single strand of 32 lights strips is capable of addressing 65536 lights
-#however the atmega238 only has memory for just over ?64? lights
-#the atmega2560 has memory for 2560 lights, but only 428 lights for wave mode
-#to support a wave traveling the entirely of the strand
-#if you get an something with more memory you need to update the arduino code
-#DI connects to pin 11 (or 51 if you have a Mega)
-#CI connects to pin 13 (or 52 if you have a Mega)
-
-#if for some reason you are running without the max part you can set the initial mode here
-#this sets wavemode 0 off 1 on
-woR=1
-woG=1
-woB=1
-#these set the main mode
-mR=0            #0 listen for audio
-mG=0            #1 test colors interlaced
-mB=0            #2 test colors sequentially
-                #3 random color walk
-#this is the wave speed delays max 255ms (251 if you want to stay in pixel sync)
-wsR=0
-wsG=0
-wsB=0
 #the pixel values used for various signals, should match arduino
 pA=255 #whole strip solid color
 su=254 #set numLights, fps, protocol and maxBright, reserved
@@ -66,7 +13,49 @@ ns=250 #single pixel
 cwR=251
 cwG=252
 cwB=253
-import OSC, serial, time, threading, datetime, struct, random
+def_ret=249 #time to send a new byte
+import OSC, serial, time, threading, datetime, struct, random, ConfigParser
+import signal, sys
+config=ConfigParser.RawConfigParser()
+if len(sys.argv)==2:
+    config.read(sys.argv[1])
+else:
+    config.read('hppm_proc_py.ini')
+psyon=config.getint("hppm_proc.py", "psyon")
+com=config.get("hppm_proc.py", "com")
+fadeR=config.getint("hppm_proc.py", "fadeR")
+fadeG=config.getint("hppm_proc.py", "fadeG")
+fadeB=config.getint("hppm_proc.py", "fadeB")
+lightOn=config.getint("hppm_proc.py", "lightOn")
+chngBProp=config.getint("hppm_proc.py", "chngBProp")
+minrwR=config.getint("hppm_proc.py", "minrwR")
+maxrwR=config.getint("hppm_proc.py", "maxrwR")
+minrwG=config.getint("hppm_proc.py", "minrwG")
+maxrwG=config.getint("hppm_proc.py", "maxrwG")
+minrwB=config.getint("hppm_proc.py", "minrwB")
+maxrwB=config.getint("hppm_proc.py", "maxrwB")
+datar=config.getint("hppm_proc.py", "datar")
+dpR=config.getint("hppm_proc.py", "dpR")
+dpG=config.getint("hppm_proc.py", "dpG")
+dpB=config.getint("hppm_proc.py", "dpB")
+rpR=config.getint("hppm_proc.py", "rpR")
+rpG=config.getint("hppm_proc.py", "rpG")
+rpB=config.getint("hppm_proc.py", "rpB")
+srp=config.getint("hppm_proc.py", "srp")
+outr=config.getint("hppm_proc.py", "outr")
+fps=config.getint("hppm_proc.py", "fps")
+sType=config.get("hppm_proc.py", "sType")
+numLights=config.getint("hppm_proc.py", "numLights")
+woR=config.getint("hppm_proc.py", "woR")
+woG=config.getint("hppm_proc.py", "woG")
+woB=config.getint("hppm_proc.py", "woB")
+mR=config.getint("hppm_proc.py", "mR")
+mG=config.getint("hppm_proc.py", "mG")
+mB=config.getint("hppm_proc.py", "mB")
+wsR=config.getint("hppm_proc.py", "wsR")
+wsG=config.getint("hppm_proc.py", "wsG")
+wsB=config.getint("hppm_proc.py", "wsB")
+
 R=[0]*datar
 G=[0]*datar
 B=[0]*datar
@@ -96,7 +85,8 @@ if psyon:
     except ImportError:
         psyon=0
         pass
-port = serial.Serial('\\\\.\\'+com, 9600, timeout=0)
+port = serial.Serial('\\\\.\\'+com, 115200, timeout=1.1)
+exit_v=0
 
 def initBP(): #Test if BP is already online, may get out of some modes TBR
     port.write('##') #test string
@@ -131,81 +121,88 @@ def main():
     #define OSC server
     osc=OSC.ThreadingOSCServer(('127.0.0.1', 10233))
     osct=threading.Thread(target=osc.serve_forever)
-    try:
-        #setup and start the OSC server
-        osc.addMsgHandler('/R', setR)
-        osc.addMsgHandler('/G', setG)
-        osc.addMsgHandler('/B', setB)
-        osc.addMsgHandler('/mR', setmR)
-        osc.addMsgHandler('/mG', setmG)
-        osc.addMsgHandler('/mB', setmB)
-        osc.addMsgHandler('/sR', setsR)
-        osc.addMsgHandler('/sG', setsG)
-        osc.addMsgHandler('/sB', setsB)
-        osc.addMsgHandler('/wsR', setwsR)
-        osc.addMsgHandler('/wsG', setwsG)
-        osc.addMsgHandler('/wsB', setwsB)
-        osc.addMsgHandler('/woR', setwoR)
-        osc.addMsgHandler('/woG', setwoG)
-        osc.addMsgHandler('/woB', setwoB)
-        osct.start()
-        #setup the arduino program
-        global maxBright
-        if sType=="LPD8806":
-            sNum=0
-            maxBright=127
-        elif sType=="WS2801":
-            sNum=2
-            maxBright=255
-        else:
-            print time.strftime('[%H:%M:%S]')+' Incorrect sType specified.'
-            osc.close()
-            osct.join()
-            time.sleep(.100)
-            if lightOn==0:
-                sendSCH(0,0,0)
-            else:
-                sendSCH(maxBright,maxBright,maxBright)
-            print time.strftime('[%H:%M:%S]')+' Program exited.'
-        write(su,numLights-1,fps,chngBProp+sNum,0)
-        while 1:
-            avg()
-            if mG==1:
-                testG()
-            elif mG==2:
-                testsG()
-            elif mG==3:
-                rwalkG()
-            else:
-                colorG()
-            if mR==1:
-                testR()
-            elif mR==2:
-                testsR()
-            elif mR==3:
-                rwalkR()
-            else:
-                colorR()
-            if mB==1:
-                testB()
-            elif mB==2:
-                testsB()
-            elif mB==3:
-                rwalkB()
-            else:
-                colorB()
-            if psyon:
-                time.sleep(0) #needed for psyco
-    except KeyboardInterrupt: #this does not work if psyco is on
-        osc.close()
-        osct.join()
-        time.sleep(.100)
-        if lightOn==0:
-            sendSCH(0,0,0)
-        else:
-            sendSCH(maxBright,maxBright,maxBright)  
-        print time.strftime('[%H:%M:%S]')+' Program exited.'
-        
+    #setup and start the OSC server
+    osc.addMsgHandler('/R', setR)
+    osc.addMsgHandler('/G', setG)
+    osc.addMsgHandler('/B', setB)
+    osc.addMsgHandler('/mR', setmR)
+    osc.addMsgHandler('/mG', setmG)
+    osc.addMsgHandler('/mB', setmB)
+    osc.addMsgHandler('/sR', setsR)
+    osc.addMsgHandler('/sG', setsG)
+    osc.addMsgHandler('/sB', setsB)
+    osc.addMsgHandler('/wsR', setwsR)
+    osc.addMsgHandler('/wsG', setwsG)
+    osc.addMsgHandler('/wsB', setwsB)
+    osc.addMsgHandler('/woR', setwoR)
+    osc.addMsgHandler('/woG', setwoG)
+    osc.addMsgHandler('/woB', setwoB)
+    osct.start()
+    #setup the arduino program
+    global maxBright
+    if sType=="LPD8806":
+	sNum=0
+	maxBright=127
+    elif sType=="WS2801":
+	sNum=2
+	maxBright=255
+    else:
+	print time.strftime('[%H:%M:%S]')+' Incorrect sType specified.'
+	osc.close()
+	osct.join()
+	time.sleep(.100)
+	if lightOn==0:
+	    sendSCH(0,0,0)
+	else:
+	    sendSCH(maxBright,maxBright,maxBright)
+	print time.strftime('[%H:%M:%S]')+' Program exited.'
+    write(su,numLights-1,fps,chngBProp+sNum,0)
+    while 1:
+	avg()
+	if mG==1:
+	    testG()
+	elif mG==2:
+	    testsG()
+	elif mG==3:
+	    rwalkG()
+	else:
+	    colorG()
+	if mR==1:
+	    testR()
+	elif mR==2:
+	    testsR()
+	elif mR==3:
+	    rwalkR()
+	else:
+	    colorR()
+	if mB==1:
+	    testB()
+	elif mB==2:
+	    testsB()
+	elif mB==3:
+	    rwalkB()
+	else:
+	    colorB()
+	if psyon:
+	    time.sleep(0) #needed for psyco
+        print exit_v
+	if exit_v:
+	    osc.close()
+	    osct.join()
+	    if lightOn==0:
+		sendSCH(0,0,0)
+	    else:
+		sendSCH(maxBright,maxBright,maxBright)
+	    print time.strftime('[%H:%M:%S]')+' Program exited.'
+            exit()
+
+def signal_handler(signal, frame):
+    print time.strftime('[%H:%M:%S]')+' Exiting...'
+    global exit_v
+    exit_v=1
+
+signal.signal(signal.SIGINT, signal_handler)
+
 def colorR():
     global wR
     wR=nwR
@@ -271,7 +268,7 @@ def rwalkG():
 
 def rwalkB():
     sendT("B",random.randint(minrwB, maxrwB))
-    
+
 def avg():
     global nwR, nwG, nwB
     aR=R
@@ -474,11 +471,29 @@ def sendSCH(r,g,b):
 def write(i,p,r,g,b):
     s=0
     while s==0:
-        global lW
-        if time.clock()-lW>=(1./outr):
-            lW=time.clock()
-            port.write(bytearray(struct.pack("!BHBBB",i,p,r,g,b)))
-            s=1
+	global lW
+	if outr==0 or time.clock()-lW>=(1./outr):
+	    b_arr=[]
+	    b_arr.append(bytearray(struct.pack("!B",i)))
+	    b_arr.append(bytearray(struct.pack("!B",bytearray(struct.pack("!H",p))[0])))
+	    b_arr.append(bytearray(struct.pack("!B",bytearray(struct.pack("!H",p))[1])))
+	    b_arr.append(bytearray(struct.pack("!B",r)))
+	    b_arr.append(bytearray(struct.pack("!B",g)))
+	    b_arr.append(bytearray(struct.pack("!B",b)))
+	    for k in b_arr:
+		s1=0
+		while s1==0:
+		    incm_b=port.read(1)
+		    if incm_b==struct.pack("!B",def_ret):
+#DEBUG                        print "waiting:"+str(port.inWaiting())
+			port.write(k)
+			s1=1
+##                    else:
+##                        print "DEBUG:"+incm_b
+#DEBUG                port.write(bytearray(struct.pack("!BHBBB",i,p,r,g,b)))
+	    lW=time.clock() 
+	    s=1
+
 
 #this sends a solid color by addressing each light, it is slow
 #I include it only for testing purposes
