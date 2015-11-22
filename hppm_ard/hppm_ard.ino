@@ -2,10 +2,11 @@
 #include <SPI.h>
 // NeoHWSerial is optional (uncomment to use) and available from 
 // https://github.com/SlashDevin/NeoHWSerial/tree/master/1.6.5r2
+// without it you get 31i/s (instructions per sec) on Mega2560
 //#include <NeoHWSerial.h>
 // If you are using NeoHWSerial there are three modes, define one of them
-//#define S_FAS // This version is the quickest but can drop instructions
-//#define S_REL // This version carries out every instruction
+//#define S_FAS // (200i/s on Mega2560) quickest but can drop instructions
+//#define S_REL // (41i/s on Mega2560) carries out every instruction
 //#define S_LOW // This version doesn't work and I'm not sure why
 
 // Specify the pixel values used for various signals, must match python.
@@ -17,7 +18,7 @@
 #define def_cwG 252
 #define def_cwB 253
 //return code to request next byre
-#define def_ret 249
+#define def_ret 17
 // DI (with the white line)  connects to pin 11 (or 51 if you have a Mega)
 // CI connects to pin 13 (or 52 if you have a Mega)
 
@@ -269,38 +270,51 @@ void colorwaveR(uint8_t r, uint8_t g, uint16_t b, uint8_t p){
       writearrP(i, 0, 0);
     }
     uint16_t i;
+    uint8_t tmp1_8;
+    uint8_t tmp2_8;
     for (uint16_t j=0; j < alen; j++){
       if (alen == 65535){
         i=(rowR+j);
       } else {
         i=(rowR+j)%(alen+1);
       }
-      if (readarrCc(def_arrRc, i)-p > 0){
-        writearrCc(def_arrRc, i, readarrCc(def_arrRc, i)-p);
+      tmp1_8=readarrCc(def_arrRc, i);
+      if (tmp1_8 > p){
+        writearrCc(def_arrRc, i, tmp1_8-p);
       } else if (readarrCc(def_arrRc, i) != 0){
         writearrCc(def_arrRc, i, 0);
       }
-      if (readarrCi(def_arrRi, i, 1)+1 <= slen && readarrCi(def_arrRi, i, 1)+1 > readarrCi(def_arrRi, i, 1)){
-        writearrCi(def_arrRi, i, 1, readarrCi(def_arrRi, i, 1)+1);
-        if (readarrP(readarrCi(def_arrRi, i, 1), 0)+readarrCc(def_arrRi, i) > ledBright){
-          writearrP(readarrCi(def_arrRi, i, 1), 0, ledBright);
+      uint16_t tmp2_16=readarrCi(def_arrRi, i, 1);
+      uint16_t tmp1_16=tmp2_16+1;
+      if (tmp1_16 <= slen && tmp2_16 != 65535 ){
+        writearrCi(def_arrRi, i, 1, tmp1_16);
+        tmp2_8=readarrCc(def_arrRi, i);
+        tmp1_8=readarrP(tmp1_16, 0)+tmp2_8;
+        if (tmp1_8 > ledBright || tmp1_8 < tmp2_8){
+          writearrP(tmp1_16, 0, ledBright);
         } else {
-          writearrP(readarrCi(def_arrRi, i, 1), 0, readarrP(readarrCi(def_arrRi, i, 1), 0)+readarrCc(def_arrRi, i));
+          writearrP(tmp1_16, 0, tmp1_8);
         }
       } 
-      if ((readarrCi(def_arrRi, i, 0)-1 < readarrCi(def_arrRi, i, 0) && readarrCi(def_arrRi, i, 0)<=32768) || (readarrCi(def_arrRi, i, 0)-1 > readarrCi(def_arrRi, i, 0) && readarrCi(def_arrRi, i, 0)>=32769)){
-        writearrCi(def_arrRi, i, 0, readarrCi(def_arrRi, i, 0)-1);
-        if (readarrP(readarrCi(def_arrRi, i, 0), 0)+readarrCc(def_arrRi, i) > ledBright){
-          writearrP(readarrCi(def_arrRi, i, 0), 0, ledBright);
+      tmp2_16=readarrCi(def_arrRi, i, 0);
+      tmp1_16=tmp2_16-1;
+      if (tmp1_16 < tmp2_16){
+        writearrCi(def_arrRi, i, 0, tmp1_16);
+        tmp2_8=readarrCc(def_arrRi, i);
+        tmp1_8=readarrP(tmp1_16, 0)+tmp2_8;
+        if (tmp1_8 > ledBright || tmp1_8 < tmp2_8){
+          writearrP(tmp1_16, 0, ledBright);
         } else {
-          writearrP(readarrCi(def_arrRi, i, 0), 0, readarrP(readarrCi(def_arrRi, i, 0), 0)+readarrCc(def_arrRi, i));
+          writearrP(tmp1_16, 0, tmp1_8);
         }
-      }
+      } 
     }
-    if (readarrP(b, 0)+lR > ledBright){
+    tmp2_8=readarrP(b, 0);
+    tmp1_8=tmp2_8+lR;
+    if (tmp1_8 > ledBright || tmp1_8 < tmp2_8){
       writearrP(b, 0, ledBright);
     } else {
-      writearrP(b, 0, readarrP(b, 0)+lR);
+      writearrP(b, 0, tmp1_8);
     }
   } else {
     if (chngBProp == 1){
@@ -325,38 +339,51 @@ void colorwaveG(uint8_t r, uint8_t g, uint16_t b, uint8_t p){
       writearrP(i, 1, 0);
     }
     uint16_t i;
+    uint8_t tmp1_8;
+    uint8_t tmp2_8;
     for (uint16_t j=0; j < alen; j++){
       if (alen == 65535){
         i=(rowG+j);
       } else {
         i=(rowG+j)%(alen+1);
       }
-      if (readarrCc(def_arrGc, i)-p > 0){
-        writearrCc(def_arrGc, i, readarrCc(def_arrGc, i)-p);
+      tmp1_8=readarrCc(def_arrGc, i);
+      if (tmp1_8 > p){
+        writearrCc(def_arrGc, i, tmp1_8-p);
       } else if (readarrCc(def_arrGc, i) != 0){
         writearrCc(def_arrGc, i, 0); 
       }
-      if (readarrCi(def_arrGi, i, 1)+1 <= slen && readarrCi(def_arrGi, i, 1)+1 > readarrCi(def_arrGi, i, 1)){
-        writearrCi(def_arrGi, i, 1, readarrCi(def_arrGi, i, 1)+1);
-        if (readarrP(readarrCi(def_arrGi, i, 1), 1)+readarrCc(def_arrGi, i) > ledBright){
-          writearrP(readarrCi(def_arrGi, i, 1), 1, ledBright);
+      uint16_t tmp2_16=readarrCi(def_arrGi, i, 1);
+      uint16_t tmp1_16=tmp2_16+1;
+      if (tmp1_16 <= slen && tmp2_16 != 65535){
+        writearrCi(def_arrGi, i, 1, tmp1_16);
+        tmp2_8=readarrCc(def_arrGi, i);
+        tmp1_8=readarrP(tmp1_16, 1)+tmp2_8;
+        if (tmp1_8 > ledBright || tmp1_8 < tmp2_8){
+          writearrP(tmp1_16, 1, ledBright);
         } else {
-          writearrP(readarrCi(def_arrGi, i, 1), 1, readarrP(readarrCi(def_arrGi, i, 1), 1)+readarrCc(def_arrGi, i));
+          writearrP(tmp1_16, 1, tmp1_8);
         }
-      } 
-      if ((readarrCi(def_arrGi, i, 0)-1 < readarrCi(def_arrGi, i, 0) && readarrCi(def_arrGi, i, 0)<=32768) || (readarrCi(def_arrGi, i, 0)-1 > readarrCi(def_arrGi, i, 0) && readarrCi(def_arrGi, i, 0)>=32769)){
-        writearrCi(def_arrGi, i, 0, readarrCi(def_arrGi, i, 0)-1);
-        if (readarrP(readarrCi(def_arrGi, i, 0), 1)+readarrCc(def_arrGi, i) > ledBright){
-          writearrP(readarrCi(def_arrGi, i, 0), 1, ledBright);
+      }
+      tmp2_16=readarrCi(def_arrGi, i, 0);
+      tmp1_16=tmp2_16-1;
+      if (tmp1_16 < tmp2_16){
+        writearrCi(def_arrGi, i, 0, tmp1_16);
+        tmp2_8=readarrCc(def_arrGi, i);
+        tmp1_8=readarrP(tmp1_16, 1)+tmp2_8;
+        if (tmp1_8 > ledBright || tmp1_8 < tmp2_8){
+          writearrP(tmp1_16, 1, ledBright);
         } else {
-          writearrP(readarrCi(def_arrGi, i, 0), 1, readarrP(readarrCi(def_arrGi, i, 0), 1)+readarrCc(def_arrGi, i));
+          writearrP(tmp1_16, 1, tmp1_8);
         }
       }
     }
-    if (readarrP(b, 1)+lG > ledBright){
-      writearrP(b, 1, ledBright);
+    tmp2_8=readarrP(b, 1);
+    tmp1_8=tmp2_8+lG;
+    if (tmp1_8 > ledBright){
+      writearrP(b, 1, ledBright || tmp1_8 < tmp2_8);
     } else {
-      writearrP(b, 1, readarrP(b, 1)+lG);
+      writearrP(b, 1, tmp1_8);
     }
   } else {
     if (chngBProp == 1){
@@ -381,38 +408,51 @@ void colorwaveB(uint8_t r, uint8_t g, uint16_t b, uint8_t p){
       writearrP(i, 2, 0);
     }
     uint16_t i;
+    uint8_t tmp1_8;
+    uint8_t tmp2_8;
     for (uint16_t j=0; j < alen; j++){
       if (alen == 65535){
         i=(rowB+j);
       } else {
         i=(rowB+j)%(alen+1);
       }
-      if (readarrCc(def_arrBc, i)-p > 0){
-        writearrCc(def_arrBc, i, readarrCc(def_arrBc, i)-p);
+      tmp1_8=readarrCc(def_arrBc, i);
+      if (tmp1_8 > p){
+        writearrCc(def_arrBc, i, tmp1_8-p);
       } else if (readarrCc(def_arrBc, i) != 0){
         writearrCc(def_arrBc, i, 0);
       }
-      if (readarrCi(def_arrBi, i, 1)+1 <= slen && readarrCi(def_arrBi, i, 1)+1 > readarrCi(def_arrBi, i, 1)){
-        writearrCi(def_arrBi, i, 1, readarrCi(def_arrBi, i, 1)+1);
-        if (readarrP(readarrCi(def_arrBi, i, 1), 2)+readarrCc(def_arrBi, i) > ledBright){
-          writearrP(readarrCi(def_arrBi, i, 1), 2, ledBright);
+      uint16_t tmp2_16=readarrCi(def_arrBi, i, 1);
+      uint16_t tmp1_16=tmp2_16+1;
+      if (tmp1_16 <= slen && tmp2_16 != 65535){
+        writearrCi(def_arrBi, i, 1, tmp1_16);
+        tmp2_8=readarrCc(def_arrBi, i);
+        tmp1_8=readarrP(tmp1_16, 2)+tmp2_8;
+        if (tmp1_8 > ledBright || tmp1_8 < tmp2_8){
+          writearrP(tmp1_16, 2, ledBright);
         } else {
-          writearrP(readarrCi(def_arrBi, i, 1), 2, readarrP(readarrCi(def_arrBi, i, 1), 2)+readarrCc(def_arrBi, i));
+          writearrP(tmp1_16, 2, tmp1_8);
         }
       } 
-      if ((readarrCi(def_arrBi, i, 0)-1 < readarrCi(def_arrBi, i, 0) && readarrCi(def_arrBi, i, 0)<=32768) || (readarrCi(def_arrBi, i, 0)-1 > readarrCi(def_arrBi, i, 0) && readarrCi(def_arrBi, i, 0)>=32769)){
-        writearrCi(def_arrBi, i, 0, readarrCi(def_arrBi, i, 0)-1);
-        if (readarrP(readarrCi(def_arrBi, i, 0), 2)+readarrCc(def_arrBi, i) > ledBright){
-          writearrP(readarrCi(def_arrBi, i, 0), 2, ledBright);
+      tmp2_16=readarrCi(def_arrBi, i, 0);
+      tmp1_16=tmp2_16-1;
+      if (tmp1_16 < tmp2_16){
+        writearrCi(def_arrBi, i, 0, tmp1_16);
+        tmp2_8=readarrCc(def_arrBi, i);
+        tmp1_8=readarrP(tmp1_16, 2)+tmp2_8;
+        if (tmp1_8 > ledBright || tmp1_8 < tmp2_8){
+          writearrP(tmp1_16, 2, ledBright);
         } else {
-          writearrP(readarrCi(def_arrBi, i, 0), 2, readarrP(readarrCi(def_arrBi, i, 0), 2)+readarrCc(def_arrBi, i));
+          writearrP(tmp1_16, 2, tmp1_8);
         }
-      }
+      } 
     }
-    if (readarrP(b, 2)+lB > ledBright){
+    tmp2_8=readarrP(b, 2);
+    tmp1_8=tmp2_8+lB;
+    if (tmp1_8 > ledBright || tmp1_8 < tmp2_8){
       writearrP(b, 2, ledBright);
     } else {
-      writearrP(b, 2, readarrP(b, 2)+lB);
+      writearrP(b, 2, tmp1_8);
     }
   } else {
     if (chngBProp == 1){

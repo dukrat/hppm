@@ -13,7 +13,7 @@ ns=250 #single pixel
 cwR=251
 cwG=252
 cwB=253
-def_ret=249 #time to send a new byte
+def_ret=17 #time to send a new byte
 import OSC, serial, time, threading, datetime, struct, random, ConfigParser
 import signal, sys
 config=ConfigParser.RawConfigParser()
@@ -492,8 +492,10 @@ def write(i,p,r,g,b):
 			s1=1
 #                    else:
 #                        print "DEBUG:"+incm_b
+#                        print 1./(time.clock()-lW)
 #DEBUG                port.write(bytearray(struct.pack("!BHBBB",i,p,r,g,b)))
-	    lW=time.clock() 
+#           print 1./(time.clock()-lW)
+	    lW=time.clock()
 	    s=1
 
 
