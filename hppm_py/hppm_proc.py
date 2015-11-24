@@ -491,7 +491,7 @@ def write(i,p,r,g,b):
 			port.write(k)
 			s1=1
 #                    else:
-#                        print "DEBUG:"+incm_b
+#                        sys.stdout.write("DEBUG:"+incm_b)
 #                        print 1./(time.clock()-lW)
 #DEBUG                port.write(bytearray(struct.pack("!BHBBB",i,p,r,g,b)))
 #           print 1./(time.clock()-lW)
