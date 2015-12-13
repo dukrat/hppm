@@ -15,52 +15,81 @@ if len(sys.argv)==2:
 else:
     config.read('hppm_proc_py.ini')
 psyon=config.getint("hppm_proc.py", "psyon")
-com=config.get("hppm_proc.py", "com")
-if "/" not in com:
-    com='\\\\.\\'+com
-fadeR=config.getint("hppm_proc.py", "fadeR")
-fadeG=config.getint("hppm_proc.py", "fadeG")
-fadeB=config.getint("hppm_proc.py", "fadeB")
-lightOn=config.getint("hppm_proc.py", "lightOn")
-chngBProp=config.getint("hppm_proc.py", "chngBProp")
-minrwR=config.getint("hppm_proc.py", "minrwR")
-maxrwR=config.getint("hppm_proc.py", "maxrwR")
-minrwG=config.getint("hppm_proc.py", "minrwG")
-maxrwG=config.getint("hppm_proc.py", "maxrwG")
-minrwB=config.getint("hppm_proc.py", "minrwB")
-maxrwB=config.getint("hppm_proc.py", "maxrwB")
 datar=config.getint("hppm_proc.py", "datar")
-dpR=config.getint("hppm_proc.py", "dpR")
-dpG=config.getint("hppm_proc.py", "dpG")
-dpB=config.getint("hppm_proc.py", "dpB")
-rpR=config.getint("hppm_proc.py", "rpR")
-rpG=config.getint("hppm_proc.py", "rpG")
-rpB=config.getint("hppm_proc.py", "rpB")
-srp=config.getint("hppm_proc.py", "srp")
-outr=config.getint("hppm_proc.py", "outr")
-fps=config.getint("hppm_proc.py", "fps")
 sType=config.get("hppm_proc.py", "sType")
-numLights=config.getint("hppm_proc.py", "numLights")
-woR=config.getint("hppm_proc.py", "woR")
-woG=config.getint("hppm_proc.py", "woG")
-woB=config.getint("hppm_proc.py", "woB")
-mR=config.getint("hppm_proc.py", "mR")
-mG=config.getint("hppm_proc.py", "mG")
-mB=config.getint("hppm_proc.py", "mB")
-wsR=config.getint("hppm_proc.py", "wsR")
-wsG=config.getint("hppm_proc.py", "wsG")
-wsB=config.getint("hppm_proc.py", "wsB")
-bind_ip=config.get("hppm_proc.py", "bind_ip")
-if bind_ip==0:
-    temp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    temp_sock.connect(('8.8.8.8', 0))
-    bind_ip=temp_sock.getsockname()[0]
-    temp_sock.close()
-bind_port=config.getint("hppm_proc.py", "bind_port")
+use_ard_int=config.getint("hppm_proc.py", "use_ard_int")
+if use_ard_int:
+    com=config.get("hppm_proc.py", "com")
+    if "/" not in com:
+        com='\\\\.\\'+com
+    fadeR=config.getint("hppm_proc.py", "fadeR")
+    fadeG=config.getint("hppm_proc.py", "fadeG")
+    fadeB=config.getint("hppm_proc.py", "fadeB")
+    lightOn=config.getint("hppm_proc.py", "lightOn")
+    chngBProp=config.getint("hppm_proc.py", "chngBProp")
+    minrwR=config.getint("hppm_proc.py", "minrwR")
+    maxrwR=config.getint("hppm_proc.py", "maxrwR")
+    minrwG=config.getint("hppm_proc.py", "minrwG")
+    maxrwG=config.getint("hppm_proc.py", "maxrwG")
+    minrwB=config.getint("hppm_proc.py", "minrwB")
+    maxrwB=config.getint("hppm_proc.py", "maxrwB")
+    dpR=config.getint("hppm_proc.py", "dpR")
+    dpG=config.getint("hppm_proc.py", "dpG")
+    dpB=config.getint("hppm_proc.py", "dpB")
+    rpR=config.getint("hppm_proc.py", "rpR")
+    rpG=config.getint("hppm_proc.py", "rpG")
+    rpB=config.getint("hppm_proc.py", "rpB")
+    srp=config.getint("hppm_proc.py", "srp")
+    outr=config.getint("hppm_proc.py", "outr")
+    fps=config.getint("hppm_proc.py", "fps")
+    numLights=config.getint("hppm_proc.py", "numLights")
+    woR=config.getint("hppm_proc.py", "woR")
+    woG=config.getint("hppm_proc.py", "woG")
+    woB=config.getint("hppm_proc.py", "woB")
+    mR=config.getint("hppm_proc.py", "mR")
+    mG=config.getint("hppm_proc.py", "mG")
+    mB=config.getint("hppm_proc.py", "mB")
+    wsR=config.getint("hppm_proc.py", "wsR")
+    wsG=config.getint("hppm_proc.py", "wsG")
+    wsB=config.getint("hppm_proc.py", "wsB")
+    R=[0]*datar
+    G=[0]*datar
+    B=[0]*datar
+    iR=-1
+    iG=-1
+    iB=-1
+    tiR=0
+    tiG=0
+    tiB=0
+    wR=0
+    wG=0
+    wB=0
+    sR=1
+    sG=1
+    sB=1
+    lR=0
+    lG=0
+    lB=0
+    lW=0
+    pR=dpR
+    pG=dpG
+    pB=dpB
+    use_osc_server=config.getint("hppm_proc.py", "use_osc_server")
+    if use_osc_server:
+        import OSC
+    bind_ip=config.get("hppm_proc.py", "bind_ip")
+    if bind_ip==0:
+        temp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        temp_sock.connect(('8.8.8.8', 0))
+        bind_ip=temp_sock.getsockname()[0]
+        temp_sock.close()
+    bind_port=config.getint("hppm_proc.py", "bind_port")
 use_gstreamer=config.getint("hppm_proc.py", "use_gstreamer")
 if use_gstreamer:
     remote_osc_server=config.get("hppm_proc.py", "remote_osc_server")
     remote_osc_port=config.getint("hppm_proc.py", "remote_osc_port")
+    if not (use_ard_int and bind_ip=='127.0.0.1' and remote_osc_server=='127.0.0.1' and bind_port==remote_osc_port):
+        import OSC
     import gi, re
     gi.require_version('Gst', '1.0')
     from gi.repository import GObject, Gst
@@ -107,28 +136,6 @@ else:
     print time.strftime('[%H:%M:%S]')+' Program exited.'
     exit()
 
-R=[0]*datar
-G=[0]*datar
-B=[0]*datar
-iR=-1
-iG=-1
-iB=-1
-tiR=0
-tiG=0
-tiB=0
-wR=0
-wG=0
-wB=0
-sR=1
-sG=1
-sB=1
-lR=0
-lG=0
-lB=0
-lW=0
-pR=dpR
-pG=dpG
-pB=dpB
 if psyon:
     try:
         import psyco
@@ -165,7 +172,6 @@ def initBP(port): #Test if BP is already online, may get out of some modes TBR
         port.write('y')     # confirm entry to bridge
 
 def start_osc_server():
-    import OSC
     #define OSC server
     osc=OSC.ThreadingOSCServer((bind_ip, bind_port))
     osct=threading.Thread(target=osc.serve_forever)
@@ -191,70 +197,91 @@ def start_osc_server():
 def start_ard():
     #setup the arduino program
     port = serial.Serial(com, 115200, timeout=1.1)
+    #  initBP(port) #TBR
     time.sleep(1.5) #pause for bootloader
     write(su,numLights-1,fps,chngBProp+sNum,0,port)
     return port
 
 
 def main():
-    #  initBP(port) #TBR
     print time.strftime('[%H:%M:%S]')+' Program started.'
-    port=start_ard()
-    osc,osct=start_osc_server()
+    quit_list=()
     if use_gstreamer:
-        global client
-        client=setup_osc_client()
         pipeline,bus=start_gst()
-    while True:
-        avg()
-        if mG==1:
-            testG(port)
-        elif mG==2:
-            testsG(port)
-        elif mG==3:
-            rwalkG(port)
+        quit_list=quit_list+(pipeline,bus)
+        if not (use_ard_int and bind_ip=='127.0.0.1' and remote_osc_server=='127.0.0.1' and bind_port==remote_osc_port):
+            global client
+            client=setup_osc_client()
+            quit_list=quit_list+(client,)
         else:
-            colorG(port)
-        if mR==1:
-            testR(port)
-        elif mR==2:
-            testsR(port)
-        elif mR==3:
-            rwalkR(port)
+            quit_list=quit_list+('NULL',)
+    else:
+        quit_list=quit_list+('NULL','NULL','NULL')
+    if use_ard_int:
+        port=start_ard()
+        quit_list=quit_list+(port,)
+        if use_osc_server:
+            osc,osct=start_osc_server()
+            quit_list=quit_list+(osc,osct)
         else:
-            colorR(port)
-        if mB==1:
-            testB(port)
-        elif mB==2:
-            testsB(port)
-        elif mB==3:
-            rwalkB(port)
-        else:
-            colorB(port)
-        if psyon:
-            time.sleep(0) #needed for psyco
-        if exit_v:
-            if use_gstreamer:
-                quit_program(osc,osct,pipeline,bus,client,port)
+            quit_list=quit_list+('NULL','NULL')
+        while True:
+            avg()
+            if mG==1:
+                testG(port)
+            elif mG==2:
+                testsG(port)
+            elif mG==3:
+                rwalkG(port)
             else:
-                quit_program(osc,osct,'NULL','NULL','NULL',port)
+                colorG(port)
+            if mR==1:
+                testR(port)
+            elif mR==2:
+                testsR(port)
+            elif mR==3:
+                rwalkR(port)
+            else:
+                colorR(port)
+            if mB==1:
+                testB(port)
+            elif mB==2:
+                testsB(port)
+            elif mB==3:
+                rwalkB(port)
+            else:
+                colorB(port)
+            if psyon:
+                time.sleep(0) #needed for psyco
+            if exit_v:
+                quit_program(quit_list)
+    else:
+        quit_list=quit_list+('NULL','NULL','NULL')
+        while True:
+            if psyon:
+                time.sleep(0) #needed for psyco
+            if exit_v:
+                quit_program(quit_list)
 
-def quit_program(osc,osct,pipeline,bus,client,port):
+def quit_program((pipeline,bus,client,port,osc,osct)):
     if use_gstreamer:
         pipeline.set_state(Gst.State.NULL)
         bus.remove_watch()
-        client.close()
+        if not (use_ard_int and bind_ip=='127.0.0.1' and remote_osc_server=='127.0.0.1' and bind_port==remote_osc_port):
+            client.close()
         gi_thread.quit()
-    osc.close()
-    osct.join()
+    if use_ard_int:
+        if use_osc_server:
+            osc.close()
+            osct.join()
 #we send these twice, as the first isn't always proc'd
-    if lightOn==0:
-        sendSCH(0,0,0,port)
-        sendSCH(0,0,0,port)
-    else:
-        sendSCH(maxBright,maxBright,maxBright,port)
-        sendSCH(maxBright,maxBright,maxBright,port)
-    port.close()
+        if lightOn==0:
+            sendSCH(0,0,0,port)
+            sendSCH(0,0,0,port)
+        else:
+            sendSCH(maxBright,maxBright,maxBright,port)
+            sendSCH(maxBright,maxBright,maxBright,port)
+        port.close()
     print time.strftime('[%H:%M:%S]')+' Program exited.'
     exit()
 
@@ -579,7 +606,6 @@ def setup_osc_client():
     ##from txosc import osc, sync
     ##client=sync.UdpSender("18.83.7.199", 10233)
 
-    import OSC
     client = OSC.OSCClient()
     client.connect((remote_osc_server, remote_osc_port))
     return client
@@ -621,27 +647,31 @@ def playerbin_message(bus,message):
 ##              client.send(osc.Message("/R", int(low_adj)))
 ##              client.send(osc.Message("/G", int(mid_adj)))
 ##              client.send(osc.Message("/B", int(high_adj)))
-            import OSC
-            b = OSC.OSCBundle()
-            osc_message=OSC.OSCMessage()
-            osc_message.setAddress("/R")
-            osc_message.append(int(low_adj))
-            #client.send(osc_message)
-            b.append(osc_message)
-            osc_message=OSC.OSCMessage()
-            osc_message.setAddress("/G")
-            osc_message.append(int(mid_adj))
-            #client.send(osc_message)
-            b.append(osc_message)
-            osc_message=OSC.OSCMessage()
-            osc_message.setAddress("/B")
-            osc_message.append(int(high_adj))
-            #client.send(osc_message)
-            b.append(osc_message)
-            client.send(b)
-#            client.send(OSC.OSCMessage("/R"+[int(low_adj)]))
-#            client.send(OSC.OSCMessage("/G"+[int(mid_adj)]))
-#            client.send(OSC.OSCMessage("/B"+[int(high_adj)]))
+            if (use_ard_int and bind_ip=='127.0.0.1' and remote_osc_server=='127.0.0.1' and bind_port==remote_osc_port):
+                setR('NULL','NULL',[low_adj],'NULL')
+                setG('NULL','NULL',[mid_adj],'NULL')
+                setB('NULL','NULL',[high_adj],'NULL')
+            else:
+                b = OSC.OSCBundle()
+                osc_message=OSC.OSCMessage()
+                osc_message.setAddress("/R")
+                osc_message.append(int(low_adj))
+                #client.send(osc_message)
+                b.append(osc_message)
+                osc_message=OSC.OSCMessage()
+                osc_message.setAddress("/G")
+                osc_message.append(int(mid_adj))
+                #client.send(osc_message)
+                b.append(osc_message)
+                osc_message=OSC.OSCMessage()
+                osc_message.setAddress("/B")
+                osc_message.append(int(high_adj))
+                #client.send(osc_message)
+                b.append(osc_message)
+                client.send(b)
+    #            client.send(OSC.OSCMessage("/R"+[int(low_adj)]))
+    #            client.send(OSC.OSCMessage("/G"+[int(mid_adj)]))
+    #            client.send(OSC.OSCMessage("/B"+[int(high_adj)]))
 
     else:
         print message
@@ -663,6 +693,7 @@ def start_gst():
     pipeline = Gst.parse_launch(sound_framework+' ! \
                                 audio/x-raw,rate='+str(aud_sample_rate)+',channels='+str(aud_chans)+',depth='+str(aud_depth)+' ! \
                                 spectrum interval='+str(sample_interval)+' bands='+str(spectrum_bands)+' ! fakesink')
+
 
 #    pipeline = Gst.parse_launch(sound_framework+' device-name="'+device_name+'" latency-time=1000 buffer-time=1001 ! \
 #                                spectrum interval='+str(sample_interval)+' ! fakesink')
