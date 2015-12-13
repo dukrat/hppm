@@ -1,9 +1,7 @@
-
-
-global psyon, com, dpR, dpG, dpB, ourt, fps, sType, numLights, woR, woG, woB
-global mR, mG, mB, wsR, wsG, wsB, pA, su, cwR, cwG, cwB, R, G, B, iR, iG, iB
-global tiR, tiG, tiB, wR, wG, wB, sR, sG, sB, lR, lG, lB, lW, nwR, nwG, nwB
-global port, fadeR, fadeG, fadeB, lightOn, chngBProp, pR, pG, pB, exit_v
+#global psyon, com, dpR, dpG, dpB, ourt, fps, sType, numLights, woR, woG, woB
+#global mR, mG, mB, wsR, wsG, wsB, pA, su, cwR, cwG, cwB, R, G, B, iR, iG, iB
+#global tiR, tiG, tiB, wR, wG, wB, sR, sG, sB, lR, lG, lB, lW, nwR, nwG, nwB
+#global port, fadeR, fadeG, fadeB, lightOn, chngBProp, pR, pG, pB, exit_v
 
 #the pixel values used for various signals, should match arduino
 pA=255 #whole strip solid color
@@ -14,7 +12,7 @@ cwR=251
 cwG=252
 cwB=253
 def_ret=17 #time to send a new byte
-import OSC, serial, time, threading, datetime, struct, random, ConfigParser
+import serial, time, threading, datetime, struct, random, ConfigParser
 import signal, sys
 config=ConfigParser.RawConfigParser()
 if len(sys.argv)==2:
@@ -55,6 +53,34 @@ mB=config.getint("hppm_proc.py", "mB")
 wsR=config.getint("hppm_proc.py", "wsR")
 wsG=config.getint("hppm_proc.py", "wsG")
 wsB=config.getint("hppm_proc.py", "wsB")
+bind_ip=config.get("hppm_proc.py", "bind_ip")
+if bind_ip==0:
+    temp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    temp_sock.connect(('8.8.8.8', 0))
+    bind_ip=temp_sock.getsockname()[0]
+    temp_sock.close()
+bind_port=config.getint("hppm_proc.py", "bind_port")
+use_gstreamer=config.getint("hppm_proc.py", "use_gstreamer")
+if use_gstreamer:
+    remote_osc_server='127.0.0.1'
+    remote_osc_port=10233
+    import gi, re
+    gi.require_version('Gst', '1.0')
+    from gi.repository import GObject, Gst
+    Gst.init(None)
+    Fs = 44100
+    N = 128
+    db_boost=30
+    sample_interval=int((1./datar)*1000000000.)
+    specify_sound_dev=1
+    if specify_sound_dev:
+        device_name="Line In (Realtek High Definition Audio)"
+        if sys.platform.startswith('win32'):
+            sound_framework='directsoundsrc'
+        elif sys.platform.startswith('darwin'):
+            sound_framework='iHateOSX'
+        else:
+            sound_framework='alsasrc'
 
 R=[0]*datar
 G=[0]*datar
@@ -85,7 +111,6 @@ if psyon:
     except ImportError:
         psyon=0
         pass
-port = serial.Serial('\\\\.\\'+com, 115200, timeout=1.1)
 exit_v=0
 
 def initBP(): #Test if BP is already online, may get out of some modes TBR
@@ -112,14 +137,12 @@ def initBP(): #Test if BP is already online, may get out of some modes TBR
         time.sleep(.008)
         port.write('(3)\n') #transparent bridge with flow control
         time.sleep(.008)
-        port.write('y')   # confirm entry to bridge
+        port.write('y')     # confirm entry to bridge
 
-def main():
-#    initBP() #TBR
-    print time.strftime('[%H:%M:%S]')+' Program started.'
-    time.sleep(1.5) #pause for bootloader
+def start_osc_server():
+    import OSC
     #define OSC server
-    osc=OSC.ThreadingOSCServer(('127.0.0.1', 10233))
+    osc=OSC.ThreadingOSCServer((bind_ip, bind_port))
     osct=threading.Thread(target=osc.serve_forever)
     #setup and start the OSC server
     osc.addMsgHandler('/R', setR)
@@ -138,65 +161,88 @@ def main():
     osc.addMsgHandler('/woG', setwoG)
     osc.addMsgHandler('/woB', setwoB)
     osct.start()
+    return osc,osct
+
+def start_ard():
     #setup the arduino program
     global maxBright
     if sType=="LPD8806":
-	sNum=0
-	maxBright=127
+        sNum=0
+        maxBright=127
     elif sType=="WS2801":
-	sNum=2
-	maxBright=255
+        sNum=2
+        maxBright=255
     else:
-	print time.strftime('[%H:%M:%S]')+' Incorrect sType specified.'
-	osc.close()
-	osct.join()
-	time.sleep(.100)
-	if lightOn==0:
-	    sendSCH(0,0,0)
-	else:
-	    sendSCH(maxBright,maxBright,maxBright)
-	print time.strftime('[%H:%M:%S]')+' Program exited.'
+        print time.strftime('[%H:%M:%S]')+' Incorrect sType specified.  Exiting...'
+        port.close()
+        print time.strftime('[%H:%M:%S]')+' Program exited.'
+        exit()
     write(su,numLights-1,fps,chngBProp+sNum,0)
-    while 1:
-	avg()
-	if mG==1:
-	    testG()
-	elif mG==2:
-	    testsG()
-	elif mG==3:
-	    rwalkG()
-	else:
-	    colorG()
-	if mR==1:
-	    testR()
-	elif mR==2:
-	    testsR()
-	elif mR==3:
-	    rwalkR()
-	else:
-	    colorR()
-	if mB==1:
-	    testB()
-	elif mB==2:
-	    testsB()
-	elif mB==3:
-	    rwalkB()
-	else:
-	    colorB()
-	if psyon:
-	    time.sleep(0) #needed for psyco
-	if exit_v:
-	    osc.close()
-	    osct.join()
-                #we send these twice, as the first isn't always proc'd
-	    if lightOn==0:
-		sendSCH(0,0,0)
-                sendSCH(0,0,0)
-	    else:
-		sendSCH(maxBright,maxBright,maxBright)
-                sendSCH(maxBright,maxBright,maxBright)
-	    print time.strftime('[%H:%M:%S]')+' Program exited.'
-            exit()
+
+port = serial.Serial('\\\\.\\'+com, 115200, timeout=1.1)
+
+def main():
+    #  initBP() #TBR
+    print time.strftime('[%H:%M:%S]')+' Program started.'
+    time.sleep(1.5) #pause for bootloader
+    start_ard()
+    osc,osct=start_osc_server()
+    if use_gstreamer:
+        global client
+        client=setup_osc_client()
+        pipeline,bus=start_gst()
+    while True:
+        avg()
+        if mG==1:
+            testG()
+        elif mG==2:
+            testsG()
+        elif mG==3:
+            rwalkG()
+        else:
+            colorG()
+        if mR==1:
+            testR()
+        elif mR==2:
+            testsR()
+        elif mR==3:
+            rwalkR()
+        else:
+            colorR()
+        if mB==1:
+            testB()
+        elif mB==2:
+            testsB()
+        elif mB==3:
+            rwalkB()
+        else:
+            colorB()
+        if psyon:
+            time.sleep(0) #needed for psyco
+        if exit_v:
+            if use_gstreamer:
+                quit_program(osc,osct,pipeline,bus,client)
+            else:
+                quit_program(osc,osct,'NULL','NULL','NULL')
+
+def quit_program(osc,osct,pipeline,bus,client):
+    if use_gstreamer:
+        pipeline.set_state(Gst.State.NULL)
+        bus.remove_watch()
+        client.close()
+        gi_thread.quit()
+    osc.close()
+    osct.join()
+#we send these twice, as the first isn't always proc'd
+    if lightOn==0:
+        sendSCH(0,0,0)
+        sendSCH(0,0,0)
+    else:
+        sendSCH(maxBright,maxBright,maxBright)
+        sendSCH(maxBright,maxBright,maxBright)
+    port.close()
+    print time.strftime('[%H:%M:%S]')+' Program exited.'
+    exit()
 
 def signal_handler(signal, frame):
     print time.strftime('[%H:%M:%S]')+' Exiting...'
@@ -471,33 +517,24 @@ def sendSCH(r,g,b):
     write(pA,0,lR,lG,lB)
 
 def write(i,p,r,g,b):
-    s=0
-    while s==0:
-	global lW
-	if outr==0 or time.clock()-lW>=(1./outr):
-	    b_arr=[]
-	    b_arr.append(bytearray(struct.pack("!B",i)))
-	    b_arr.append(bytearray(struct.pack("!B",bytearray(struct.pack("!H",p))[0])))
-	    b_arr.append(bytearray(struct.pack("!B",bytearray(struct.pack("!H",p))[1])))
-	    b_arr.append(bytearray(struct.pack("!B",r)))
-	    b_arr.append(bytearray(struct.pack("!B",g)))
-	    b_arr.append(bytearray(struct.pack("!B",b)))
-	    for k in b_arr:
-		s1=0
-		while s1==0:
-		    incm_b=port.read(1)
-		    if incm_b==struct.pack("!B",def_ret):
-#DEBUG                        print "waiting:"+str(port.inWaiting())
-			port.write(k)
-			s1=1
+    global lW
+    time_waited=time.clock()-lW
+    if outr and time_waited<(1./outr):
+        time.sleep((1./outr)-time_waited)
+    b_arr=struct.pack("!BHBBB",i,p,r,g,b)
+    for k in b_arr:
+        while True:
+            incm_b=port.read(1)
+            if incm_b==struct.pack("!B",def_ret):
+#DEBUG                          print "waiting:"+str(port.inWaiting())
+                port.write(bytearray(k))
+                break
 #                    else:
 #                        sys.stdout.write("DEBUG:"+incm_b)
 #                        print 1./(time.clock()-lW)
-#DEBUG                port.write(bytearray(struct.pack("!BHBBB",i,p,r,g,b)))
+#DEBUG                  port.write(bytearray(struct.pack("!BHBBB",i,p,r,g,b)))
 #           print 1./(time.clock()-lW)
-	    lW=time.clock()
-	    s=1
-
+    lW=time.clock()
 
 #this sends a solid color by addressing each light, it is slow
 #I include it only for testing purposes
@@ -516,4 +553,125 @@ def sendSCslow(cV,dV):
         for i in xrange(numLights):
             write(ns,i,lR,lG,lB)
 
-main()
+def setup_osc_client():
+    ######from twisted.internet import reactor
+    ######from txosc import osc, dispatch, async
+    ######client=async.DatagramClientProtocol()
+    ######reactor.listenUDP(0, client)
+    ######def sendOSC(element):
+    ######      client.send(element, ("18.83.7.199", 10233))
+
+    ##import socket
+    ##from txosc import osc, sync
+    ##client=sync.UdpSender("18.83.7.199", 10233)
+
+    import OSC
+    client = OSC.OSCClient()
+    client.connect((remote_osc_server, remote_osc_port))
+    return client
+
+def n(F):
+    return int(float(F)/(Fs/N))+1
+
+def playerbin_message(bus,message):
+    if message.type == Gst.MessageType.ELEMENT:
+        struct = message.get_structure()
+        if struct.get_name() == 'spectrum':
+            matches = re.search(r'magnitude=\(float\){([^}]+)}', struct.to_string())
+            m = [float(x) for x in matches.group(1).split(',')]
+            #print n(125)
+            #print n(350)
+            #print n(1500)
+            #print n(6000)
+            low  = max(m[:n(125)])
+            mid  = max(m[n(350):n(1500)])
+            high = max(m[n(6000):])
+
+            low_lin=10**((low+db_boost)/20.)
+            mid_lin=10**((mid+db_boost)/20.)
+            high_lin=10**((high+db_boost)/20.)
+            low_adj=((low_lin**1.5)*255.)-1.
+            mid_adj=((mid_lin**1.5)*255.)-1.
+            high_adj=((high_lin**1.5)*255.)-1.
+
+#            print "%03.1f %03.1f %03.1f %-30s %-30s %30s" % (low_adj, mid_adj, high_adj,
+#                                                            "x"*int(low_adj/10),
+#                                                            " "*int((30-(mid_adj/10))/2)+"x"*int(mid_adj/10),
+#                                                            "x"*int(high_adj/10),
+#                                                            )
+
+######              sendOSC(osc.Message("/R", int(low_adj)))
+######              sendOSC(osc.Message("/G", int(mid_adj)))
+######              sendOSC(osc.Message("/B", int(high_adj)))
+
+##              client.send(osc.Message("/R", int(low_adj)))
+##              client.send(osc.Message("/G", int(mid_adj)))
+##              client.send(osc.Message("/B", int(high_adj)))
+            import OSC
+            b = OSC.OSCBundle()
+            osc_message=OSC.OSCMessage()
+            osc_message.setAddress("/R")
+            osc_message.append(int(low_adj))
+            #client.send(osc_message)
+            b.append(osc_message)
+            osc_message=OSC.OSCMessage()
+            osc_message.setAddress("/G")
+            osc_message.append(int(mid_adj))
+            #client.send(osc_message)
+            b.append(osc_message)
+            osc_message=OSC.OSCMessage()
+            osc_message.setAddress("/B")
+            osc_message.append(int(high_adj))
+            #client.send(osc_message)
+            b.append(osc_message)
+            client.send(b)
+#            client.send(OSC.OSCMessage("/R"+[int(low_adj)]))
+#            client.send(OSC.OSCMessage("/G"+[int(mid_adj)]))
+#            client.send(OSC.OSCMessage("/B"+[int(high_adj)]))
+
+    else:
+        print message
+    return True
+
+def test_message(bus, message):
+    print 'pang'
+
+def start_gst():
+    #pipeline = Gst.parse_launch(
+    #  'pulsesrc device="alsa_output.pci-0000_00_1b.0.analog-surround-50.monitor" ! spectrum interval=16666667 ! fakesink')
+    ##pipeline = Gst.parse_launch('directsoundsrc device-name="Line In (Realtek High Definition Audio)" latency-time=1000 buffer-time=8000 ! \
+    ##                              spectrum interval=16666667 ! tee name=t \
+    ##                              t. ! queue ! udpsink blocksize=512 host= \
+    ##                              t. ! queue ! udpsink blocksize=512 host=')
+    #pipeline = Gst.parse_launch('directsoundsrc device-name="Line In (Realtek High Definition Audio)" latency-time=1000 buffer-time=2000 ! \
+    #                            spectrum interval=33333333 ! tee name=t \
+    #                            t. ! queue ! udpsink blocksize=512 host= \
+    #                            t. ! queue ! udpsink blocksize=512 host=')
+    #pipeline = Gst.parse_launch('directsoundsrc device-name="Microphone (GN 9350)" ! spectrum interval=16666667 ! directsoundsink')
+
+    pipeline = Gst.parse_launch(sound_framework+' device-name="'+device_name+'" latency-time=1000 buffer-time=1001 ! \
+                                spectrum interval='+str(sample_interval)+' ! fakesink')
+    bus = pipeline.get_bus()
+    #bus.add_signal_watch()
+    #bus.connect('message', playerbin_message)
+    bus.add_watch(0, playerbin_message)
+    pipeline.set_state(Gst.State.PLAYING)
+    print time.strftime('[%H:%M:%S]')+' pipeline PLAYING'
+    return pipeline,bus
+
+if use_gstreamer:
+    main_thread=threading.Thread(target=main)
+    main_thread.start()
+    gi_thread=GObject.MainLoop()
+    gi_thread.run()
+else:
+    main()
+## Wait until error or EOS.
+#msg = bus.timed_pop_filtered(Gst.CLOCK_TIME_NONE,
+#Gst.MessageType.ERROR | Gst.MessageType.EOS)
+#print msg
+# To find devices
+# sink=Gst.ElementFactory.make("directsoundsrc")
+# 
+#caps audio/x-raw, format=(string)S16LE, layout=(string)interleaved, rate=(int)44100, channels=(int)2
+#
