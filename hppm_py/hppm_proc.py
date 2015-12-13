@@ -1,8 +1,3 @@
-#global psyon, com, dpR, dpG, dpB, ourt, fps, sType, numLights, woR, woG, woB
-#global mR, mG, mB, wsR, wsG, wsB, pA, su, cwR, cwG, cwB, R, G, B, iR, iG, iB
-#global tiR, tiG, tiB, wR, wG, wB, sR, sG, sB, lR, lG, lB, lW, nwR, nwG, nwB
-#global port, fadeR, fadeG, fadeB, lightOn, chngBProp, pR, pG, pB, exit_v
-
 #the pixel values used for various signals, should match arduino
 pA=255 #whole strip solid color
 su=254 #set numLights, fps, protocol and maxBright, reserved
@@ -21,6 +16,8 @@ else:
     config.read('hppm_proc_py.ini')
 psyon=config.getint("hppm_proc.py", "psyon")
 com=config.get("hppm_proc.py", "com")
+if "/" not in com:
+    com='\\\\.\\'+com
 fadeR=config.getint("hppm_proc.py", "fadeR")
 fadeG=config.getint("hppm_proc.py", "fadeG")
 fadeB=config.getint("hppm_proc.py", "fadeB")
@@ -62,25 +59,53 @@ if bind_ip==0:
 bind_port=config.getint("hppm_proc.py", "bind_port")
 use_gstreamer=config.getint("hppm_proc.py", "use_gstreamer")
 if use_gstreamer:
-    remote_osc_server='127.0.0.1'
-    remote_osc_port=10233
+    remote_osc_server=config.get("hppm_proc.py", "remote_osc_server")
+    remote_osc_port=config.getint("hppm_proc.py", "remote_osc_port")
     import gi, re
     gi.require_version('Gst', '1.0')
     from gi.repository import GObject, Gst
     Gst.init(None)
-    Fs = 44100
-    N = 128
-    db_boost=30
+    aud_sample_rate=config.getint("hppm_proc.py", "aud_sample_rate")
+    aud_chans=config.getint("hppm_proc.py", "aud_chans")
+    aud_depth=config.getint("hppm_proc.py", "aud_depth")
+    spectrum_bands=1024
+    low_db_adj=config.getfloat("hppm_proc.py", "low_db_adj")
+    mid_db_adj=config.getfloat("hppm_proc.py", "mid_db_adj")
+    high_db_adj=config.getfloat("hppm_proc.py", "high_db_adj")
+    low_led_curv=config.getfloat("hppm_proc.py", "low_led_curv")
+    mid_led_curv=config.getfloat("hppm_proc.py", "mid_led_curv")
+    high_led_curv=config.getfloat("hppm_proc.py", "high_led_curv")
+    low_led_adj=config.getint("hppm_proc.py", "low_led_adj")
+    mid_led_adj=config.getint("hppm_proc.py", "mid_led_adj")
+    high_led_adj=config.getint("hppm_proc.py", "high_led_adj")
+    min_low_freq=config.get("hppm_proc.py", "min_low_freq")
+    max_low_freq=config.get("hppm_proc.py", "max_low_freq")
+    min_mid_freq=config.get("hppm_proc.py", "min_mid_freq")
+    max_mid_freq=config.get("hppm_proc.py", "max_mid_freq")
+    min_high_freq=config.get("hppm_proc.py", "min_high_freq")
+    max_high_freq=config.get("hppm_proc.py", "max_high_freq")
     sample_interval=int((1./datar)*1000000000.)
-    specify_sound_dev=1
-    if specify_sound_dev:
-        device_name="Line In (Realtek High Definition Audio)"
+    aud_dev_name=config.get("hppm_proc.py", "aud_dev_name")
+    if aud_dev_name==0:
+        sound_framework='autosoundsrc'
+    else:
         if sys.platform.startswith('win32'):
-            sound_framework='directsoundsrc'
+            sound_framework='directsoundsrc device-name="'+aud_dev_name+'" latency-time=1000 buffer-time=1001'
         elif sys.platform.startswith('darwin'):
-            sound_framework='iHateOSX'
+            sound_framework='osxaudiosrc device="'+aud_dev_name+'"'
         else:
-            sound_framework='alsasrc'
+            sound_framework='alsasrc device-name="'+aud_dev_name+'"'
+
+if sType=="LPD8806":
+    sNum=0
+    maxBright=127
+elif sType=="WS2801":
+    sNum=2
+    maxBright=255
+else:
+    print time.strftime('[%H:%M:%S]')+' Incorrect sType specified.  Exiting...'
+    print time.strftime('[%H:%M:%S]')+' Program exited.'
+    exit()
 
 R=[0]*datar
 G=[0]*datar
@@ -113,7 +138,7 @@ if psyon:
         pass
 exit_v=0
 
-def initBP(): #Test if BP is already online, may get out of some modes TBR
+def initBP(port): #Test if BP is already online, may get out of some modes TBR
     port.write('##') #test string
     time.sleep(.008)
     if port.read(2)=='##': #echoing test string indicates BP in term mode
@@ -165,27 +190,16 @@ def start_osc_server():
 
 def start_ard():
     #setup the arduino program
-    global maxBright
-    if sType=="LPD8806":
-        sNum=0
-        maxBright=127
-    elif sType=="WS2801":
-        sNum=2
-        maxBright=255
-    else:
-        print time.strftime('[%H:%M:%S]')+' Incorrect sType specified.  Exiting...'
-        port.close()
-        print time.strftime('[%H:%M:%S]')+' Program exited.'
-        exit()
-    write(su,numLights-1,fps,chngBProp+sNum,0)
+    port = serial.Serial(com, 115200, timeout=1.1)
+    time.sleep(1.5) #pause for bootloader
+    write(su,numLights-1,fps,chngBProp+sNum,0,port)
+    return port
 
-port = serial.Serial('\\\\.\\'+com, 115200, timeout=1.1)
 
 def main():
-    #  initBP() #TBR
+    #  initBP(port) #TBR
     print time.strftime('[%H:%M:%S]')+' Program started.'
-    time.sleep(1.5) #pause for bootloader
-    start_ard()
+    port=start_ard()
     osc,osct=start_osc_server()
     if use_gstreamer:
         global client
@@ -194,38 +208,38 @@ def main():
     while True:
         avg()
         if mG==1:
-            testG()
+            testG(port)
         elif mG==2:
-            testsG()
+            testsG(port)
         elif mG==3:
-            rwalkG()
+            rwalkG(port)
         else:
-            colorG()
+            colorG(port)
         if mR==1:
-            testR()
+            testR(port)
         elif mR==2:
-            testsR()
+            testsR(port)
         elif mR==3:
-            rwalkR()
+            rwalkR(port)
         else:
-            colorR()
+            colorR(port)
         if mB==1:
-            testB()
+            testB(port)
         elif mB==2:
-            testsB()
+            testsB(port)
         elif mB==3:
-            rwalkB()
+            rwalkB(port)
         else:
-            colorB()
+            colorB(port)
         if psyon:
             time.sleep(0) #needed for psyco
         if exit_v:
             if use_gstreamer:
-                quit_program(osc,osct,pipeline,bus,client)
+                quit_program(osc,osct,pipeline,bus,client,port)
             else:
-                quit_program(osc,osct,'NULL','NULL','NULL')
+                quit_program(osc,osct,'NULL','NULL','NULL',port)
 
-def quit_program(osc,osct,pipeline,bus,client):
+def quit_program(osc,osct,pipeline,bus,client,port):
     if use_gstreamer:
         pipeline.set_state(Gst.State.NULL)
         bus.remove_watch()
@@ -235,11 +249,11 @@ def quit_program(osc,osct,pipeline,bus,client):
     osct.join()
 #we send these twice, as the first isn't always proc'd
     if lightOn==0:
-        sendSCH(0,0,0)
-        sendSCH(0,0,0)
+        sendSCH(0,0,0,port)
+        sendSCH(0,0,0,port)
     else:
-        sendSCH(maxBright,maxBright,maxBright)
-        sendSCH(maxBright,maxBright,maxBright)
+        sendSCH(maxBright,maxBright,maxBright,port)
+        sendSCH(maxBright,maxBright,maxBright,port)
     port.close()
     print time.strftime('[%H:%M:%S]')+' Program exited.'
     exit()
@@ -251,71 +265,71 @@ def signal_handler(signal, frame):
 
 signal.signal(signal.SIGINT, signal_handler)
 
-def colorR():
+def colorR(port):
     global wR
     wR=nwR
-    sendT("R",wR)
+    sendT("R",wR,port)
 
-def colorG():
+def colorG(port):
     global wG
     wG=nwG
-    sendT("G",wG)
+    sendT("G",wG,port)
 
-def colorB():
+def colorB(port):
     global wB
     wB=nwB
-    sendT("B",wB)
+    sendT("B",wB,port)
 
-def testR():
+def testR(port):
     global tiR
     if tiR>maxBright:
-        sendT("R",(maxBright*2)-tiR)
+        sendT("R",(maxBright*2)-tiR,port)
     else:
-        sendT("R",tiR)
+        sendT("R",tiR,port)
     tiR=(tiR+1)%(maxBright*2)
 
-def testG():
+def testG(port):
     global tiG
     if tiG>maxBright:
-        sendT("G",(maxBright*2)-tiG)
+        sendT("G",(maxBright*2)-tiG,port)
     else:
-        sendT("G",tiG)
+        sendT("G",tiG,port)
     tiG=(tiG+1)%(maxBright*2)
 
-def testB():
+def testB(port):
     global tiB
     if tiB>maxBright:
-        sendT("B",(maxBright*2)-tiB)
+        sendT("B",(maxBright*2)-tiB,port)
     else:
-        sendT("B",tiB)
+        sendT("B",tiB,port)
     tiB=(tiB+1)%(maxBright*2)
 
-def testsR():
+def testsR(port):
     for i in xrange(maxBright+1):
-        sendT("R",i)
+        sendT("R",i,port)
     for i in xrange(maxBright):
-        sendT("R",maxBright-1-i)
+        sendT("R",maxBright-1-i,port)
 
-def testsG():
+def testsG(port):
     for i in xrange(maxBright+1):
-        sendT("G",i)
+        sendT("G",i,port)
     for i in xrange(maxBright):
-        sendT("G",maxBright-1-i)
+        sendT("G",maxBright-1-i,port)
 
-def testsB():
+def testsB(port):
     for i in xrange(maxBright+1):
-        sendT("B",i)
+        sendT("B",i,port)
     for i in xrange(maxBright):
-        sendT("B",maxBright-1-i)
+        sendT("B",maxBright-1-i,port)
 
-def rwalkR():
-    sendT("R",random.randint(minrwR, maxrwR))
+def rwalkR(port):
+    sendT("R",random.randint(minrwR, maxrwR),port)
     
-def rwalkG():
-    sendT("G",random.randint(minrwG, maxrwG))
+def rwalkG(port):
+    sendT("G",random.randint(minrwG, maxrwG),port)
 
-def rwalkB():
-    sendT("B",random.randint(minrwB, maxrwB))
+def rwalkB(port):
+    sendT("B",random.randint(minrwB, maxrwB),port)
 
 def avg():
     global nwR, nwG, nwB
@@ -452,36 +466,36 @@ def setwoB(NULL1,NULL2,nwoB,NULL3):
     if woB==1:
         print time.strftime('[%H:%M:%S]')+' Blue wavemode onlined.'
 
-def sendT(cV,dV):
+def sendT(cV,dV,port):
     if cV=="R":
         if woR==0:
-            sendSC(cV,dV)
+            sendSC(cV,dV,port)
         if woR==1:
-            sendCW(cV,dV)
+            sendCW(cV,dV,port)
     elif cV=="G":
         if woG==0:
-            sendSC(cV,dV)
+            sendSC(cV,dV,port)
         if woG==1:
-            sendCW(cV,dV)
+            sendCW(cV,dV,port)
     elif cV=="B":
         if woB==0:
-            sendSC(cV,dV)
+            sendSC(cV,dV,port)
         if woB==1:
-            sendCW(cV,dV)
+            sendCW(cV,dV,port)
 
-def sendSC(cV,dV):
+def sendSC(cV,dV,port):
     global lR, lG, lB
     if cV=="R":
         lR=dV
-        write(pA,0,lR,lG,lB)
+        write(pA,0,lR,lG,lB,port)
     elif cV=="G":
         lG=dV
-        write(pA,0,lR,lG,lB)
+        write(pA,0,lR,lG,lB,port)
     elif cV=="B":
         lB=dV
-        write(pA,0,lR,lG,lB)
+        write(pA,0,lR,lG,lB,port)
 
-def sendCW(cV,dV):
+def sendCW(cV,dV,port):
     global lR, lG, lB, pR, pG, pB
     if cV=="R":
         lR=dV
@@ -491,14 +505,14 @@ def sendCW(cV,dV):
             pR=random.randint(0,numLights-1)
         else:
             pR=dpR
-        write(cwR,pR,wsR,lR,fadeR)
+        write(cwR,pR,wsR,lR,fadeR,port)
     elif cV=="G":
         lG=dV
         if rpG==1:
             pG=random.randint(0,numLights-1)
         else:
             pG=dpG
-        write(cwG,pG,wsG,lG,fadeG)
+        write(cwG,pG,wsG,lG,fadeG,port)
     elif cV=="B":
         lB=dV
         if srp==1:
@@ -507,16 +521,16 @@ def sendCW(cV,dV):
             pB=random.randint(0,numLights-1)
         else:
             pB=dpB
-        write(cwB,pB,wsB,lB,fadeB)
+        write(cwB,pB,wsB,lB,fadeB,port)
 
-def sendSCH(r,g,b):
+def sendSCH(r,g,b,port):
     global lR, lG, lB
     lR=r
     lG=g
     lB=b
-    write(pA,0,lR,lG,lB)
+    write(pA,0,lR,lG,lB,port)
 
-def write(i,p,r,g,b):
+def write(i,p,r,g,b,port):
     global lW
     time_waited=time.clock()-lW
     if outr and time_waited<(1./outr):
@@ -538,20 +552,20 @@ def write(i,p,r,g,b):
 
 #this sends a solid color by addressing each light, it is slow
 #I include it only for testing purposes
-def sendSCslow(cV,dV):
+def sendSCslow(cV,dV,port):
     global lR, lG, lB
     if cV=="R":
         lR=dV
         for i in xrange(numLights):
-            write(ns,i,lR,lG,lB)
+            write(ns,i,lR,lG,lB,port)
     elif cV=="G":
         lG=dV
         for i in xrange(numLights):
-            write(ns,i,lR,lG,lB)
+            write(ns,i,lR,lG,lB,port)
     elif cV=="B":
         lB=dV
         for i in xrange(numLights):
-            write(ns,i,lR,lG,lB)
+            write(ns,i,lR,lG,lB,port)
 
 def setup_osc_client():
     ######from twisted.internet import reactor
@@ -570,8 +584,12 @@ def setup_osc_client():
     client.connect((remote_osc_server, remote_osc_port))
     return client
 
-def n(F):
-    return int(float(F)/(Fs/N))+1
+def freq_to_band(freq):
+    if freq=='None':
+        return None
+    else:
+        return int((2.*float(freq)*float(spectrum_bands)-(float(aud_sample_rate)/2.))/float(aud_sample_rate))
+   #return int(float(freq)/(aud_sample_rate/spectrum_bands))+1
 
 def playerbin_message(bus,message):
     if message.type == Gst.MessageType.ELEMENT:
@@ -579,20 +597,16 @@ def playerbin_message(bus,message):
         if struct.get_name() == 'spectrum':
             matches = re.search(r'magnitude=\(float\){([^}]+)}', struct.to_string())
             m = [float(x) for x in matches.group(1).split(',')]
-            #print n(125)
-            #print n(350)
-            #print n(1500)
-            #print n(6000)
-            low  = max(m[:n(125)])
-            mid  = max(m[n(350):n(1500)])
-            high = max(m[n(6000):])
+            low  = max(m[freq_to_band(min_low_freq):freq_to_band(max_low_freq)])
+            mid  = max(m[freq_to_band(min_mid_freq):freq_to_band(max_mid_freq)])
+            high = max(m[freq_to_band(min_high_freq):freq_to_band(max_high_freq)])
 
-            low_lin=10**((low+db_boost)/20.)
-            mid_lin=10**((mid+db_boost)/20.)
-            high_lin=10**((high+db_boost)/20.)
-            low_adj=((low_lin**1.5)*255.)-1.
-            mid_adj=((mid_lin**1.5)*255.)-1.
-            high_adj=((high_lin**1.5)*255.)-1.
+            low_lin=10**((low+low_db_adj)/20.)
+            mid_lin=10**((mid+mid_db_adj)/20.)
+            high_lin=10**((high+high_db_adj)/20.)
+            low_adj=((low_lin**float(low_led_curv))*float(maxBright))+float(low_led_adj)
+            mid_adj=((mid_lin**float(mid_led_curv))*float(maxBright))+float(mid_led_adj)
+            high_adj=((high_lin**float(high_led_curv))*float(maxBright))+float(high_led_adj)
 
 #            print "%03.1f %03.1f %03.1f %-30s %-30s %30s" % (low_adj, mid_adj, high_adj,
 #                                                            "x"*int(low_adj/10),
@@ -633,9 +647,6 @@ def playerbin_message(bus,message):
         print message
     return True
 
-def test_message(bus, message):
-    print 'pang'
-
 def start_gst():
     #pipeline = Gst.parse_launch(
     #  'pulsesrc device="alsa_output.pci-0000_00_1b.0.analog-surround-50.monitor" ! spectrum interval=16666667 ! fakesink')
@@ -649,8 +660,13 @@ def start_gst():
     #                            t. ! queue ! udpsink blocksize=512 host=')
     #pipeline = Gst.parse_launch('directsoundsrc device-name="Microphone (GN 9350)" ! spectrum interval=16666667 ! directsoundsink')
 
-    pipeline = Gst.parse_launch(sound_framework+' device-name="'+device_name+'" latency-time=1000 buffer-time=1001 ! \
-                                spectrum interval='+str(sample_interval)+' ! fakesink')
+    pipeline = Gst.parse_launch(sound_framework+' ! \
+                                audio/x-raw,rate='+str(aud_sample_rate)+',channels='+str(aud_chans)+',depth='+str(aud_depth)+' ! \
+                                spectrum interval='+str(sample_interval)+' bands='+str(spectrum_bands)+' ! fakesink')
+
+#    pipeline = Gst.parse_launch(sound_framework+' device-name="'+device_name+'" latency-time=1000 buffer-time=1001 ! \
+#                                spectrum interval='+str(sample_interval)+' ! fakesink')
+
     bus = pipeline.get_bus()
     #bus.add_signal_watch()
     #bus.connect('message', playerbin_message)
@@ -675,3 +691,29 @@ else:
 # 
 #caps audio/x-raw, format=(string)S16LE, layout=(string)interleaved, rate=(int)44100, channels=(int)2
 #
+
+#convert to not global:
+#wR wG wB
+#nwR nwG nwB
+#lR lG lB
+#pR pG pB
+#lW
+#
+#globals:
+#client
+#exit_v
+#R iR
+#G iG
+#B iB
+#sR
+#sG
+#sB
+#mG tiG
+#mR tiR
+#mB tiB
+#wsR
+#wsG
+#wsB
+#woR
+#woB
+#woG
