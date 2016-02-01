@@ -22,6 +22,8 @@ if use_ard_int:
     com=config.get("hppm_proc.py", "com")
     if "/" not in com:
         com='\\\\.\\'+com
+use_tcp=config.getint("hppm_proc.py", "use_tcp")
+if use_ard_int or use_tcp:
     fadeR=config.getint("hppm_proc.py", "fadeR")
     fadeG=config.getint("hppm_proc.py", "fadeG")
     fadeB=config.getint("hppm_proc.py", "fadeB")
@@ -88,7 +90,10 @@ use_gstreamer=config.getint("hppm_proc.py", "use_gstreamer")
 if use_gstreamer:
     remote_osc_server=config.get("hppm_proc.py", "remote_osc_server")
     remote_osc_port=config.getint("hppm_proc.py", "remote_osc_port")
-    if not (use_ard_int and bind_ip=='127.0.0.1' and remote_osc_server=='127.0.0.1' and bind_port==remote_osc_port):
+    if (use_ard_int or use_tcp) and bind_ip=='127.0.0.1' and remote_osc_server=='127.0.0.1' and bind_port==remote_osc_port:
+        use_local=1
+    else:
+        use_local=0
         import OSC
     import gi, re
     gi.require_version('Gst', '1.0')
@@ -144,6 +149,8 @@ if psyon:
         psyon=0
         pass
 exit_v=0
+tcp_sock='NULL'
+quit_list=[]
 
 def initBP(port): #Test if BP is already online, may get out of some modes TBR
     port.write('##') #test string
@@ -199,164 +206,196 @@ def start_ard():
     port = serial.Serial(com, 115200, timeout=1.1)
     #  initBP(port) #TBR
     time.sleep(1.5) #pause for bootloader
-    write(su,numLights-1,fps,chngBProp+sNum,0,port)
     return port
 
+def start_tcp(tcp_server, tcp_port):
+    import socket
+    s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        s.connect((tcp_server, tcp_port))
+        return s
+    except:
+        print time.strftime('[%H:%M:%S]')+' Could not connect to TCP Server.'
+        s.close()
+        return 'NULL'
+#        if use_gstreamer:
+#            gi_thread.quit()
+#        print time.strftime('[%H:%M:%S]')+' Program exited.'
+#        exit()
+    
 
 def main():
     print time.strftime('[%H:%M:%S]')+' Program started.'
-    quit_list=()
+    global tcp_sock,quit_list
+    if use_tcp:
+        tcp_sock=start_tcp(config.get("hppm_proc.py", "tcp_server"),config.getint("hppm_proc.py", "tcp_port"))
+    quit_list.append(tcp_sock)
     if use_gstreamer:
         pipeline,bus=start_gst()
-        quit_list=quit_list+(pipeline,bus)
-        if not (use_ard_int and bind_ip=='127.0.0.1' and remote_osc_server=='127.0.0.1' and bind_port==remote_osc_port):
+        quit_list.append(pipeline)
+        quit_list.append(bus)
+        if not use_local:
             global client
             client=setup_osc_client()
-            quit_list=quit_list+(client,)
+            quit_list.append(client)
         else:
-            quit_list=quit_list+('NULL',)
+            quit_list.append('NULL')
     else:
-        quit_list=quit_list+('NULL','NULL','NULL')
+        quit_list.append('NULL')
+        quit_list.append('NULL')
+        quit_list.append('NULL')
     if use_ard_int:
         port=start_ard()
-        quit_list=quit_list+(port,)
+        quit_list.append(port)
+    else:
+        port='NULL'
+        quit_list.append('NULL')
+    if use_ard_int or use_tcp:
+        write(su,numLights-1,fps,chngBProp+sNum,0,port,tcp_sock)
         if use_osc_server:
             osc,osct=start_osc_server()
-            quit_list=quit_list+(osc,osct)
+            quit_list.append(osc)
+            quit_list.append(osct)
         else:
-            quit_list=quit_list+('NULL','NULL')
+            quit_list.append('NULL')
+            quit_list.append('NULL')
         while True:
             avg()
             if mG==1:
-                testG(port)
+                testG(port,tcp_sock)
             elif mG==2:
-                testsG(port)
+                testsG(port,tcp_sock)
             elif mG==3:
-                rwalkG(port)
+                rwalkG(port,tcp_sock)
             else:
-                colorG(port)
+                colorG(port,tcp_sock)
             if mR==1:
-                testR(port)
+                testR(port,tcp_sock)
             elif mR==2:
-                testsR(port)
+                testsR(port,tcp_sock)
             elif mR==3:
-                rwalkR(port)
+                rwalkR(port,tcp_sock)
             else:
-                colorR(port)
+                colorR(port,tcp_sock)
             if mB==1:
-                testB(port)
+                testB(port,tcp_sock)
             elif mB==2:
-                testsB(port)
+                testsB(port,tcp_sock)
             elif mB==3:
-                rwalkB(port)
+                rwalkB(port,tcp_sock)
             else:
-                colorB(port)
+                colorB(port,tcp_sock)
             if psyon:
                 time.sleep(0) #needed for psyco
             if exit_v:
                 quit_program(quit_list)
     else:
-        quit_list=quit_list+('NULL','NULL','NULL')
+        quit_list.append('NULL')
+        quit_list.append('NULL')
         while True:
             if psyon:
                 time.sleep(0) #needed for psyco
             if exit_v:
                 quit_program(quit_list)
 
-def quit_program((pipeline,bus,client,port,osc,osct)):
+def quit_program((tcp_sock,pipeline,bus,client,port,osc,osct)):
+    print time.strftime('[%H:%M:%S]')+' Exiting...'
     if use_gstreamer:
         pipeline.set_state(Gst.State.NULL)
         bus.remove_watch()
-        if not (use_ard_int and bind_ip=='127.0.0.1' and remote_osc_server=='127.0.0.1' and bind_port==remote_osc_port):
+        if not use_local:
             client.close()
         gi_thread.quit()
-    if use_ard_int:
+    if use_ard_int or use_tcp:
         if use_osc_server:
             osc.close()
             osct.join()
 #we send these twice, as the first isn't always proc'd
         if lightOn==0:
-            sendSCH(0,0,0,port)
-            sendSCH(0,0,0,port)
+            sendSCH(0,0,0,port,tcp_sock)
+            sendSCH(0,0,0,port,tcp_sock)
         else:
-            sendSCH(maxBright,maxBright,maxBright,port)
-            sendSCH(maxBright,maxBright,maxBright,port)
-        port.close()
+            sendSCH(maxBright,maxBright,maxBright,port,tcp_sock)
+            sendSCH(maxBright,maxBright,maxBright,port,tcp_sock)
+        if use_ard_int:
+            port.close()
+        if tcp_sock!='NULL':
+            tcp_sock.close()
     print time.strftime('[%H:%M:%S]')+' Program exited.'
     exit()
 
 def signal_handler(signal, frame):
-    print time.strftime('[%H:%M:%S]')+' Exiting...'
+    print time.strftime('[%H:%M:%S]')+' Requested exit.'
     global exit_v
     exit_v=1
 
 signal.signal(signal.SIGINT, signal_handler)
 
-def colorR(port):
+def colorR(port,tcp_sock):
     global wR
     wR=nwR
-    sendT("R",wR,port)
+    sendT("R",wR,port,tcp_sock)
 
-def colorG(port):
+def colorG(port,tcp_sock):
     global wG
     wG=nwG
-    sendT("G",wG,port)
+    sendT("G",wG,port,tcp_sock)
 
-def colorB(port):
+def colorB(port,tcp_sock):
     global wB
     wB=nwB
-    sendT("B",wB,port)
+    sendT("B",wB,port,tcp_sock)
 
-def testR(port):
+def testR(port,tcp_sock):
     global tiR
     if tiR>maxBright:
-        sendT("R",(maxBright*2)-tiR,port)
+        sendT("R",(maxBright*2)-tiR,port,tcp_sock)
     else:
-        sendT("R",tiR,port)
+        sendT("R",tiR,port,tcp_sock)
     tiR=(tiR+1)%(maxBright*2)
 
-def testG(port):
+def testG(port,tcp_sock):
     global tiG
     if tiG>maxBright:
-        sendT("G",(maxBright*2)-tiG,port)
+        sendT("G",(maxBright*2)-tiG,port,tcp_sock)
     else:
-        sendT("G",tiG,port)
+        sendT("G",tiG,port,tcp_sock)
     tiG=(tiG+1)%(maxBright*2)
 
-def testB(port):
+def testB(port,tcp_sock):
     global tiB
     if tiB>maxBright:
-        sendT("B",(maxBright*2)-tiB,port)
+        sendT("B",(maxBright*2)-tiB,port,tcp_sock)
     else:
-        sendT("B",tiB,port)
+        sendT("B",tiB,port,tcp_sock)
     tiB=(tiB+1)%(maxBright*2)
 
-def testsR(port):
+def testsR(port,tcp_sock):
     for i in xrange(maxBright+1):
-        sendT("R",i,port)
+        sendT("R",i,port,tcp_sock)
     for i in xrange(maxBright):
-        sendT("R",maxBright-1-i,port)
+        sendT("R",maxBright-1-i,port,tcp_sock)
 
-def testsG(port):
+def testsG(port,tcp_sock):
     for i in xrange(maxBright+1):
-        sendT("G",i,port)
+        sendT("G",i,port,tcp_sock)
     for i in xrange(maxBright):
-        sendT("G",maxBright-1-i,port)
+        sendT("G",maxBright-1-i,port,tcp_sock)
 
-def testsB(port):
+def testsB(port,tcp_sock):
     for i in xrange(maxBright+1):
-        sendT("B",i,port)
+        sendT("B",i,port,tcp_sock)
     for i in xrange(maxBright):
-        sendT("B",maxBright-1-i,port)
+        sendT("B",maxBright-1-i,port,tcp_sock)
 
-def rwalkR(port):
-    sendT("R",random.randint(minrwR, maxrwR),port)
+def rwalkR(port,tcp_sock):
+    sendT("R",random.randint(minrwR, maxrwR),port,tcp_sock)
     
-def rwalkG(port):
-    sendT("G",random.randint(minrwG, maxrwG),port)
+def rwalkG(port,tcp_sock):
+    sendT("G",random.randint(minrwG, maxrwG),port,tcp_sock)
 
-def rwalkB(port):
-    sendT("B",random.randint(minrwB, maxrwB),port)
+def rwalkB(port,tcp_sock):
+    sendT("B",random.randint(minrwB, maxrwB),port,tcp_sock)
 
 def avg():
     global nwR, nwG, nwB
@@ -493,36 +532,36 @@ def setwoB(NULL1,NULL2,nwoB,NULL3):
     if woB==1:
         print time.strftime('[%H:%M:%S]')+' Blue wavemode onlined.'
 
-def sendT(cV,dV,port):
+def sendT(cV,dV,port,tcp_sock):
     if cV=="R":
         if woR==0:
-            sendSC(cV,dV,port)
+            sendSC(cV,dV,port,tcp_sock)
         if woR==1:
-            sendCW(cV,dV,port)
+            sendCW(cV,dV,port,tcp_sock)
     elif cV=="G":
         if woG==0:
-            sendSC(cV,dV,port)
+            sendSC(cV,dV,port,tcp_sock)
         if woG==1:
-            sendCW(cV,dV,port)
+            sendCW(cV,dV,port,tcp_sock)
     elif cV=="B":
         if woB==0:
-            sendSC(cV,dV,port)
+            sendSC(cV,dV,port,tcp_sock)
         if woB==1:
-            sendCW(cV,dV,port)
+            sendCW(cV,dV,port,tcp_sock)
 
-def sendSC(cV,dV,port):
+def sendSC(cV,dV,port,tcp_sock):
     global lR, lG, lB
     if cV=="R":
         lR=dV
-        write(pA,0,lR,lG,lB,port)
+        write(pA,0,lR,lG,lB,port,tcp_sock)
     elif cV=="G":
         lG=dV
-        write(pA,0,lR,lG,lB,port)
+        write(pA,0,lR,lG,lB,port,tcp_sock)
     elif cV=="B":
         lB=dV
-        write(pA,0,lR,lG,lB,port)
+        write(pA,0,lR,lG,lB,port,tcp_sock)
 
-def sendCW(cV,dV,port):
+def sendCW(cV,dV,port,tcp_sock):
     global lR, lG, lB, pR, pG, pB
     if cV=="R":
         lR=dV
@@ -532,14 +571,14 @@ def sendCW(cV,dV,port):
             pR=random.randint(0,numLights-1)
         else:
             pR=dpR
-        write(cwR,pR,wsR,lR,fadeR,port)
+        write(cwR,pR,wsR,lR,fadeR,port,tcp_sock)
     elif cV=="G":
         lG=dV
         if rpG==1:
             pG=random.randint(0,numLights-1)
         else:
             pG=dpG
-        write(cwG,pG,wsG,lG,fadeG,port)
+        write(cwG,pG,wsG,lG,fadeG,port,tcp_sock)
     elif cV=="B":
         lB=dV
         if srp==1:
@@ -548,51 +587,64 @@ def sendCW(cV,dV,port):
             pB=random.randint(0,numLights-1)
         else:
             pB=dpB
-        write(cwB,pB,wsB,lB,fadeB,port)
+        write(cwB,pB,wsB,lB,fadeB,port,tcp_sock)
 
-def sendSCH(r,g,b,port):
+def sendSCH(r,g,b,port,tcp_sock):
     global lR, lG, lB
     lR=r
     lG=g
     lB=b
-    write(pA,0,lR,lG,lB,port)
+    write(pA,0,lR,lG,lB,port,tcp_sock)
 
-def write(i,p,r,g,b,port):
+def write(i,p,r,g,b,port,tcp_sock_local):
     global lW
     time_waited=time.clock()-lW
     if outr and time_waited<(1./outr):
         time.sleep((1./outr)-time_waited)
     b_arr=struct.pack("!BHBBB",i,p,r,g,b)
-    for k in b_arr:
-        while True:
-            incm_b=port.read(1)
-            if incm_b==struct.pack("!B",def_ret):
-#DEBUG                          print "waiting:"+str(port.inWaiting())
-                port.write(bytearray(k))
-                break
-#                    else:
-#                        sys.stdout.write("DEBUG:"+incm_b)
-#                        print 1./(time.clock()-lW)
-#DEBUG                  port.write(bytearray(struct.pack("!BHBBB",i,p,r,g,b)))
-#           print 1./(time.clock()-lW)
+    if use_tcp:
+        try:
+            tcp_sock_local.send(b_arr)
+        except:
+            print time.strftime('[%H:%M:%S]')+' TCP send error, trying to reconnect...'
+            global tcp_sock,quit_list
+            if tcp_sock!='NULL':
+                tcp_sock_local.close()
+            tcp_sock=start_tcp(config.get("hppm_proc.py", "tcp_server"),config.getint("hppm_proc.py", "tcp_port"))
+            if tcp_sock!='NULL':
+                print time.strftime('[%H:%M:%S]')+' TCP reconnected.'
+            quit_list[0]=tcp_sock
+    if use_ard_int:
+        for k in b_arr:
+            while True:
+                incm_b=port.read(1)
+                if incm_b==struct.pack("!B",def_ret):
+    #DEBUG                          print "waiting:"+str(port.inWaiting())
+                    port.write(bytearray(k))
+                    break
+    #                    else:
+    #                        sys.stdout.write("DEBUG:"+incm_b)
+    #                        print 1./(time.clock()-lW)
+    #DEBUG                  port.write(bytearray(struct.pack("!BHBBB",i,p,r,g,b)))
+    #           print 1./(time.clock()-lW)
     lW=time.clock()
 
 #this sends a solid color by addressing each light, it is slow
 #I include it only for testing purposes
-def sendSCslow(cV,dV,port):
+def sendSCslow(cV,dV,port,tcp_sock):
     global lR, lG, lB
     if cV=="R":
         lR=dV
         for i in xrange(numLights):
-            write(ns,i,lR,lG,lB,port)
+            write(ns,i,lR,lG,lB,port,tcp_sock)
     elif cV=="G":
         lG=dV
         for i in xrange(numLights):
-            write(ns,i,lR,lG,lB,port)
+            write(ns,i,lR,lG,lB,port,tcp_sock)
     elif cV=="B":
         lB=dV
         for i in xrange(numLights):
-            write(ns,i,lR,lG,lB,port)
+            write(ns,i,lR,lG,lB,port,tcp_sock)
 
 def setup_osc_client():
     ######from twisted.internet import reactor
@@ -600,11 +652,11 @@ def setup_osc_client():
     ######client=async.DatagramClientProtocol()
     ######reactor.listenUDP(0, client)
     ######def sendOSC(element):
-    ######      client.send(element, ("18.83.7.199", 10233))
+    ######      client.send(element, ("hostip", 10233))
 
     ##import socket
     ##from txosc import osc, sync
-    ##client=sync.UdpSender("18.83.7.199", 10233)
+    ##client=sync.UdpSender("hostip", 10233)
 
     client = OSC.OSCClient()
     client.connect((remote_osc_server, remote_osc_port))
@@ -647,7 +699,7 @@ def playerbin_message(bus,message):
 ##              client.send(osc.Message("/R", int(low_adj)))
 ##              client.send(osc.Message("/G", int(mid_adj)))
 ##              client.send(osc.Message("/B", int(high_adj)))
-            if (use_ard_int and bind_ip=='127.0.0.1' and remote_osc_server=='127.0.0.1' and bind_port==remote_osc_port):
+            if use_local:
                 setR('NULL','NULL',[low_adj],'NULL')
                 setG('NULL','NULL',[mid_adj],'NULL')
                 setB('NULL','NULL',[high_adj],'NULL')
@@ -673,8 +725,8 @@ def playerbin_message(bus,message):
     #            client.send(OSC.OSCMessage("/G"+[int(mid_adj)]))
     #            client.send(OSC.OSCMessage("/B"+[int(high_adj)]))
 
-    else:
-        print message
+#DEBUG    else:
+#DEBUG        print message
     return True
 
 def start_gst():
