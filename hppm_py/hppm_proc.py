@@ -211,6 +211,7 @@ def start_ard():
 def start_tcp(tcp_server, tcp_port):
     import socket
     s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     try:
         s.connect((tcp_server, tcp_port))
         return s
