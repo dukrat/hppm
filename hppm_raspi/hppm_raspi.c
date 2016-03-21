@@ -704,6 +704,7 @@ void dis(){
       spi_buf[i*3]=readarrP(i, 2) | 0x80;
       spi_buf[i*3+1]=readarrP(i, 0) | 0x80;
       spi_buf[i*3+2]=readarrP(i, 1) | 0x80;
+    }
   }
 //  for (uint16_t i=0; i <=num_reset_bits; i++){
 //    spi_buf[(slen+1)*3+slen/32+i]=0x00;
