@@ -133,6 +133,9 @@ if use_gstreamer:
 if sType=="LPD8806":
     sNum=0
     maxBright=127
+elif sType=="LPD8806v2":
+    sNum=4
+    maxBright=127
 elif sType=="WS2801":
     sNum=2
     maxBright=255

@@ -57,6 +57,7 @@ uint16_t alen;
 uint32_t lShow;
 bool chngBProp;
 uint8_t ledBright;
+uint8_t sNum;
 uint32_t lwR=0;
 uint32_t lwG=0;
 uint32_t lwB=0;
@@ -451,16 +452,17 @@ void setupvars(uint8_t r,uint8_t g,uint16_t b){
   free(spi_buf);
   fps=g;
   slen=b;
+  sNum=r
   // set how to handle signal coming in faster than wave speed
   // 1 display it on the imcoming pixel
   // 0 ignore it
-  if (r==0 || r==2){
+  if (r==0 || r==2 || r==4){
     chngBProp=0;
   } else {
     chngBProp=1;
   }
   // set the max pixel brightness
-  if (r==2 || r==3){
+  if (r==2 || r==3 ){
     ledBright=255;
   } else {
     ledBright=127;
@@ -689,12 +691,19 @@ uint8_t readarrP(uint16_t p1, uint8_t p2){
 void dis(){
   uint16_t num_reset_bits=slen/32+1;
   memset(spi_buf,0,(slen+1)*3+num_reset_bits);
-  for (uint16_t i=0; i <= slen; i++){
-    spi_buf[i*3]=readarrP(i, 1) | 0x80;
-    spi_buf[i*3+1]=readarrP(i, 0) | 0x80;
-    spi_buf[i*3+2]=readarrP(i, 2) | 0x80;
-//    printf("\n%u %u %u\n",readarrP(i, 1),readarrP(i, 0),readarrP(i, 2));
-//    printf("%u %u %u\n\n",spi_buf[i*3],spi_buf[i*3+1],spi_buf[i*3+2]);
+  if (sNum==0 || sNum==1){
+    for (uint16_t i=0; i <= slen; i++){
+      spi_buf[i*3]=readarrP(i, 1) | 0x80;
+      spi_buf[i*3+1]=readarrP(i, 0) | 0x80;
+      spi_buf[i*3+2]=readarrP(i, 2) | 0x80;
+//      printf("\n%u %u %u\n",readarrP(i, 1),readarrP(i, 0),readarrP(i, 2));
+//      printf("%u %u %u\n\n",spi_buf[i*3],spi_buf[i*3+1],spi_buf[i*3+2]);
+    }
+  } else if (sNum==4 || sNum==5){
+    for (uint16_t i=0; i <= slen; i++){
+      spi_buf[i*3]=readarrP(i, 2) | 0x80;
+      spi_buf[i*3+1]=readarrP(i, 0) | 0x80;
+      spi_buf[i*3+2]=readarrP(i, 1) | 0x80;
   }
 //  for (uint16_t i=0; i <=num_reset_bits; i++){
 //    spi_buf[(slen+1)*3+slen/32+i]=0x00;
