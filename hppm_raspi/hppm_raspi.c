@@ -452,7 +452,7 @@ void setupvars(uint8_t r,uint8_t g,uint16_t b){
   free(spi_buf);
   fps=g;
   slen=b;
-  sNum=r
+  sNum=r;
   // set how to handle signal coming in faster than wave speed
   // 1 display it on the imcoming pixel
   // 0 ignore it
