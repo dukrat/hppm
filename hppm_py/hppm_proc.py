@@ -2,7 +2,8 @@
 pA=255 #whole strip solid color
 su=254 #set numLights, fps, protocol and maxBright, reserved
 ns=250 #single pixel
-#start wave on color origin
+pAns=248 #whole strip solid color but no show
+nsns=249 #single pixel but no show
 cwR=251
 cwG=252
 cwB=253

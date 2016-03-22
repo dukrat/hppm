@@ -32,8 +32,10 @@ struct timespec thirdsec_time={0}, zero_time={0};
 
 // Specify the pixel values used for various signals, must match python.
 #define def_pA 255 //whole strip solid color
+#define def_pAns 248 //whole strip solid color but no show
 #define def_su 254 //set numLights, fps, protocol and maxBright, reserved
 #define def_ns 250 //single pixel
+#define def_nsns 249 //single pixel but no show
 //start wave on color or
 #define def_cwR 251
 #define def_cwG 252
@@ -189,9 +191,13 @@ void procInst(){
   } else if (inst==def_pA){
     solidColor(ir,ig,ib);
     show();
+  } else if (inst==def_pAns){
+    solidColor(ir,ig,ib);
   } else if (inst==def_ns){
     setPixelColor(ip,ir,ig,ib);
     show();
+  } else if (inst==def_nsns){
+    setPixelColor(ip,ir,ig,ib);
   } else if (inst==def_su){
     setupvars(ig,ir,ip);
   } else {
