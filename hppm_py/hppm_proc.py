@@ -152,9 +152,26 @@ if psyon:
     except ImportError:
         psyon=0
         pass
-exit_v=0
 tcp_sock='NULL'
 quit_list=[]
+
+
+class SignalExit:
+    exit_v = False
+
+
+    def __init__(self):
+        signal.signal(signal.SIGINT, self.signal_handler)
+        signal.signal(signal.SIGTERM, self.signal_handler)
+
+
+    def signal_handler(self, signum, frame):
+       print(time.strftime('[%H:%M:%S]') + ' Requested exit.')
+       self.exit_v = True
+
+
+sigExit = SignalExit()
+
 
 def initBP(port): #Test if BP is already online, may get out of some modes TBR
     port.write('##') #test string
@@ -292,7 +309,7 @@ def main():
                 colorB(port,tcp_sock)
             if psyon:
                 time.sleep(0) #needed for psyco
-            if exit_v:
+            if sigExit.exit_v:
                 quit_program(quit_list)
     else:
         quit_list.append('NULL')
@@ -300,7 +317,7 @@ def main():
         while True:
             if psyon:
                 time.sleep(0) #needed for psyco
-            if exit_v:
+            if sigExit.exit_v:
                 quit_program(quit_list)
 
 def quit_program((tcp_sock,pipeline,bus,client,port,osc,osct)):
@@ -329,12 +346,6 @@ def quit_program((tcp_sock,pipeline,bus,client,port,osc,osct)):
     print time.strftime('[%H:%M:%S]')+' Program exited.'
     exit()
 
-def signal_handler(signal, frame):
-    print time.strftime('[%H:%M:%S]')+' Requested exit.'
-    global exit_v
-    exit_v=1
-
-signal.signal(signal.SIGINT, signal_handler)
 
 def colorR(port,tcp_sock):
     global wR
@@ -789,7 +800,6 @@ else:
 #
 #globals:
 #client
-#exit_v
 #R iR
 #G iG
 #B iB
