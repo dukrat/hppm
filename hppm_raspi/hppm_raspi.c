@@ -112,6 +112,7 @@ int main(int argc, char *argv[]) {
   // See if lights should stay on or go off
   // when there is no TCP incoming
   bool lights_off=1;
+  struct spi_ioc_transfer reset_tr;
   if(argc == 2){
     if(argv[1] == "-s"){
       lights_off=0;
@@ -129,7 +130,7 @@ int main(int argc, char *argv[]) {
     for (uint32_t i=196605;i<198654;i++){
       reset_buf[i]=0;
     }
-    struct spi_ioc_transfer reset_tr={
+    reset_tr={
       .tx_buf=(unsigned long)reset_buf,
       .len=198654,
     };
@@ -138,8 +139,8 @@ int main(int argc, char *argv[]) {
   struct sockaddr_in serv_addr, cli_addr;
   int srvTcpFd=socket(AF_INET, SOCK_STREAM, 0);
   const int reuse = 1;
-  setsockopt(srvTcpFd,SOL_SOCKET,SO_REUSEADDR,(const char*)&reuse, sizeof(reuse)) < 0);
-  setsockopt(srvTcpFd,SOL_SOCKET,SO_REUSEPORT,(const char*)&reuse, sizeof(reuse)) < 0);
+  setsockopt(srvTcpFd,SOL_SOCKET,SO_REUSEADDR,(const char*)&reuse, sizeof(reuse));
+  setsockopt(srvTcpFd,SOL_SOCKET,SO_REUSEPORT,(const char*)&reuse, sizeof(reuse));
   memset((char *) &serv_addr, 0,sizeof(serv_addr));
   serv_addr.sin_family=AF_INET;
   serv_addr.sin_addr.s_addr=INADDR_ANY;
@@ -190,9 +191,9 @@ int main(int argc, char *argv[]) {
   //poll() setup
   struct pollfd watch_fd[1];
   watch_fd[0].fd=srvTcpFd;
-  watch_fd[0].events=POLLOUT;
+  watch_fd[0].events=POLLIN;
   while(1){
-    int sock_ready=poll(&watch_fd,1,10000);
+    int sock_ready=poll(watch_fd,1,10000);
     if(sock_ready > 0){
       int tcpConFd=accept(srvTcpFd, (struct sockaddr *) &cli_addr, (socklen_t*) &clilen);
       printf("TCP Client Connected.\n");
