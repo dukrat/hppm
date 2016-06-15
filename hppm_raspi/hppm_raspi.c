@@ -104,7 +104,7 @@ arr8c1 *spi_buf;
 int spifd;
 
 void usage() {
-  printf("Usage: %s [-s]\n       -s keep lights on when there is no TCP client (otherwise lights turn off)\n");
+  printf("Usage: %s [-s]\n       -s keep lights on when there is no TCP client (otherwise lights turn off)\n",argv[0]);
   fflush(stdout);
 }
 
