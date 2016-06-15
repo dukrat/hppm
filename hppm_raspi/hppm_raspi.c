@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
   for (uint32_t i=196605;i<198654;i++){
     reset_buf[i]=0;
   }
-  reset_tr={
+  struct spi_ioc_transfer reset_tr={
     .tx_buf=(unsigned long)reset_buf,
     .len=198654,
   };
