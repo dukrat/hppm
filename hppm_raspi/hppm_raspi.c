@@ -103,8 +103,8 @@ arr8c1 *spi_buf;
 
 int spifd;
 
-void usage() {
-  printf("Usage: %s [-s]\n       -s keep lights on when there is no TCP client (otherwise lights turn off)\n",argv[0]);
+void usage(char *progname) {
+  printf("Usage: %s [-s]\n       -s keep lights on when there is no TCP client (otherwise lights turn off)\n",progname);
   fflush(stdout);
 }
 
@@ -123,14 +123,14 @@ int main(int argc, char *argv[]) {
     .len=198654,
   };
   if(argc == 2){
-    if(argv[1] == "-s"){
+    if(strcmp(argv[1],"-s") == 0 ){
       lights_off=0;
     } else {
-      usage();
+      usage(argv[0]);
       exit(1);
     }
   } else if(argc > 2){
-    usage();
+    usage(argv[0]);
     exit(1);
   }
   // Start the TCP/IP server
