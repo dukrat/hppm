@@ -11,6 +11,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <stdio.h>
+#include <poll.h>
 void procInst();
 void colorwaveR(uint8_t r, uint8_t g, uint16_t b, uint8_t p);
 void colorwaveG(uint8_t r, uint8_t g, uint16_t b, uint8_t p);
@@ -102,10 +103,43 @@ arr8c1 *spi_buf;
 
 int spifd;
 
-void main() {
+void usage() {
+  printf("Usage: %s [-s]\n       -s keep lights on when there is no TCP client (otherwise lights turn off)\n");
+  fflush(stdout);
+}
+
+int main(int argc, char *argv[]) {
+  // See if lights should stay on or go off
+  // when there is no TCP incoming
+  bool lights_off=1;
+  if(argc == 2){
+    if(argv[1] == "-s"){
+      lights_off=0;
+    } else {
+      usage();
+      exit(1);
+    }
+  } else if(argc > 2){
+    usage();
+    exit(1);
+  } else {
+    arr8c1 *reset_buf;
+    reset_buf=(arr8c1 *)malloc( 198654 * sizeof(uint8_t));
+    memset(reset_buf,128,198654);
+    for (uint32_t i=196605;i<198654;i++){
+      reset_buf[i]=0;
+    }
+    struct spi_ioc_transfer reset_tr={
+      .tx_buf=(unsigned long)reset_buf,
+      .len=198654,
+    };
+  }
   // Start the TCP/IP server
   struct sockaddr_in serv_addr, cli_addr;
   int srvTcpFd=socket(AF_INET, SOCK_STREAM, 0);
+  const int reuse = 1;
+  setsockopt(srvTcpFd,SOL_SOCKET,SO_REUSEADDR,(const char*)&reuse, sizeof(reuse)) < 0);
+  setsockopt(srvTcpFd,SOL_SOCKET,SO_REUSEPORT,(const char*)&reuse, sizeof(reuse)) < 0);
   memset((char *) &serv_addr, 0,sizeof(serv_addr));
   serv_addr.sin_family=AF_INET;
   serv_addr.sin_addr.s_addr=INADDR_ANY;
@@ -153,28 +187,40 @@ void main() {
   uint8_t tcp_buf[def_instlen];
   printf("Waiting for TCP Client...\n");
   fflush(stdout);
+  //poll() setup
+  struct pollfd watch_fd[1];
+  watch_fd[0].fd=srvTcpFd;
+  watch_fd[0].events=POLLOUT;
   while(1){
-    int tcpConFd=accept(srvTcpFd, (struct sockaddr *) &cli_addr, (socklen_t*) &clilen);
-    printf("TCP Client Connected.\n");
-    fflush(stdout);
-    while(1){
-      memset(tcp_buf,0,def_instlen);
-      uint16_t bytes_read=read(tcpConFd,tcp_buf,def_instlen);
-      inst=(uint8_t)tcp_buf[0];
-      ip8[1]=(uint8_t)tcp_buf[1];
-      ip8[0]=(uint8_t)tcp_buf[2];
-      ip=*(uint16_t *)&ip8;
-      ir=(uint8_t)tcp_buf[3];
-      ig=(uint8_t)tcp_buf[4];
-      ib=(uint8_t)tcp_buf[5];
-      if (inst==0 || bytes_read!=def_instlen){
-        break;
+    int sock_ready=poll(&watch_fd,1,10000);
+    if(sock_ready > 0){
+      int tcpConFd=accept(srvTcpFd, (struct sockaddr *) &cli_addr, (socklen_t*) &clilen);
+      printf("TCP Client Connected.\n");
+      fflush(stdout);
+      while(1){
+        memset(tcp_buf,0,def_instlen);
+        uint16_t bytes_read=read(tcpConFd,tcp_buf,def_instlen);
+        inst=(uint8_t)tcp_buf[0];
+        ip8[1]=(uint8_t)tcp_buf[1];
+        ip8[0]=(uint8_t)tcp_buf[2];
+        ip=*(uint16_t *)&ip8;
+        ir=(uint8_t)tcp_buf[3];
+        ig=(uint8_t)tcp_buf[4];
+        ib=(uint8_t)tcp_buf[5];
+        if (inst==0 || bytes_read!=def_instlen){
+          break;
+        }
+        procInst();
       }
-      procInst();
+      printf("Closing TCP socket.\n");
+      fflush(stdout);
+      close(tcpConFd);
+    } else {
+      if(lights_off){
+        //turn off lights
+        ioctl(spifd,SPI_IOC_MESSAGE(1),&reset_tr);
+      }
     }
-  printf("Closing TCP socket.\n");
-  fflush(stdout);
-  close(tcpConFd);
   }
 }
 
