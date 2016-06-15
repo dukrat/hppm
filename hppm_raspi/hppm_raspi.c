@@ -112,7 +112,16 @@ int main(int argc, char *argv[]) {
   // See if lights should stay on or go off
   // when there is no TCP incoming
   bool lights_off=1;
-  struct spi_ioc_transfer reset_tr;
+  arr8c1 *reset_buf;
+  reset_buf=(arr8c1 *)malloc( 198654 * sizeof(uint8_t));
+  memset(reset_buf,128,198654);
+  for (uint32_t i=196605;i<198654;i++){
+    reset_buf[i]=0;
+  }
+  reset_tr={
+    .tx_buf=(unsigned long)reset_buf,
+    .len=198654,
+  };
   if(argc == 2){
     if(argv[1] == "-s"){
       lights_off=0;
@@ -123,17 +132,6 @@ int main(int argc, char *argv[]) {
   } else if(argc > 2){
     usage();
     exit(1);
-  } else {
-    arr8c1 *reset_buf;
-    reset_buf=(arr8c1 *)malloc( 198654 * sizeof(uint8_t));
-    memset(reset_buf,128,198654);
-    for (uint32_t i=196605;i<198654;i++){
-      reset_buf[i]=0;
-    }
-    reset_tr={
-      .tx_buf=(unsigned long)reset_buf,
-      .len=198654,
-    };
   }
   // Start the TCP/IP server
   struct sockaddr_in serv_addr, cli_addr;
