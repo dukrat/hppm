@@ -89,6 +89,8 @@ arr8c3 *arrP1;
 arr8c3 *arrP2;
 arr8c1 *spi_buf;
 
+void spi_send(arr8c1 *spi_msg, size_t *spi_msg_len);
+
 // Defines to use names for choosing the arr to write/read to
 #define def_arrRc 0
 #define def_arrGc 1
@@ -113,15 +115,7 @@ int main(int argc, char *argv[]) {
   // when there is no TCP incoming
   bool lights_off=1;
   arr8c1 *reset_buf;
-  reset_buf=(arr8c1 *)malloc( 198654 * sizeof(uint8_t));
-  memset(reset_buf,128,198654);
-  for (uint32_t i=196605;i<198654;i++){
-    reset_buf[i]=0;
-  }
-  struct spi_ioc_transfer reset_tr={
-    .tx_buf=(unsigned long)reset_buf,
-    .len=198654,
-  };
+  size_t reset_buf_len=198657;
   if(argc == 2){
     if(strcmp(argv[1],"-s") == 0 ){
       lights_off=0;
@@ -132,6 +126,12 @@ int main(int argc, char *argv[]) {
   } else if(argc > 2){
     usage(argv[0]);
     exit(1);
+  } else {
+    reset_buf=(arr8c1 *)malloc(reset_buf_len*sizeof(uint8_t));
+    memset(reset_buf,128,198657);
+    for (uint32_t i=196608;i<198657;i++){
+      reset_buf[i]=0;
+    }
   }
   // Start the TCP/IP server
   struct sockaddr_in serv_addr, cli_addr;
@@ -217,7 +217,7 @@ int main(int argc, char *argv[]) {
     } else {
       if(lights_off){
         //turn off lights
-        ioctl(spifd,SPI_IOC_MESSAGE(1),&reset_tr);
+        spi_send(reset_buf,&reset_buf_len);
       }
     }
   }
@@ -526,8 +526,8 @@ void setupvars(uint8_t r,uint8_t g,uint16_t b){
     arrP1=(arr8c3 *)malloc(32768 * 3 * sizeof(uint8_t));
     arrP2=(arr8c3 *)malloc(((slen+1)-32768) * 3 * sizeof(uint8_t));
   }
-  uint16_t num_reset_bits=slen/32+1;
-  spi_buf=(arr8c1 *)malloc(((slen+1)*3+num_reset_bits) * sizeof(uint8_t));
+  size_t num_reset_bytes=slen/32+1;
+  spi_buf=(arr8c1 *)malloc(((slen+1)*3+num_reset_bytes) * sizeof(uint8_t));
   //Calculate memory left for color wave arrays
     alen=(slen+1)*3;
 //  alen=(freeRam()/15)-10;
@@ -579,13 +579,9 @@ void setupvars(uint8_t r,uint8_t g,uint16_t b){
     }
   }
   //Reset strip
-  uint8_t reset_buf[num_reset_bits];
-  memset(reset_buf,0,num_reset_bits);
-  struct spi_ioc_transfer tr={
-    .tx_buf=(unsigned long)reset_buf,
-    .len=num_reset_bits,
-  };
-  ioctl(spifd,SPI_IOC_MESSAGE(1),&tr);
+  uint8_t reset_buf[num_reset_bytes];
+  memset(reset_buf,0,num_reset_bytes);
+  spi_send(reset_buf, &num_reset_bytes);
   solidColor(0,0,0);
   show();
   printf("Running.\n");
@@ -740,8 +736,8 @@ uint8_t readarrP(uint16_t p1, uint8_t p2){
 //}
 
 void dis(){
-  uint16_t num_reset_bits=slen/32+1;
-  memset(spi_buf,0,(slen+1)*3+num_reset_bits);
+  size_t spi_buf_len=(slen+1)*3+(slen/32+1);
+  memset(spi_buf,0,spi_buf_len);
   if (sNum==0 || sNum==1){
     for (uint16_t i=0; i <= slen; i++){
       spi_buf[i*3]=readarrP(i, 1) | 0x80;
@@ -775,13 +771,29 @@ void dis(){
 //  ssize_t num_written=write(spifd,spi_buf,(slen+1)*3);
 //  printf("%u ",num_written);
 //  fflush(stdout);
-  struct spi_ioc_transfer tr ={
-    .tx_buf=(unsigned long)spi_buf,
-    .len=(slen+1)*3+num_reset_bits,
-  };
-  uint8_t ret=ioctl(spifd,SPI_IOC_MESSAGE(1),&tr);
+//printf("%u %u %u\n",spi_buf[13],spi_buf[14],spi_buf[15]);
+  spi_send(spi_buf, &spi_buf_len);
 //  printf("wrote:%u",ret);
 //  fflush(stdout);
+}
+
+void spi_send(arr8c1 *spi_msg, size_t *spi_msg_len)
+{
+  const uint16_t bytes_at_once = 4096;
+  uint16_t full_buffers = *spi_msg_len / bytes_at_once;
+  uint16_t last_buffer_len = *spi_msg_len % bytes_at_once;
+  for(size_t i=0;i<full_buffers;i++) {
+    struct spi_ioc_transfer tr={
+      .tx_buf=(unsigned long)(spi_msg+i*bytes_at_once),
+      .len=bytes_at_once,
+    };
+    ioctl(spifd,SPI_IOC_MESSAGE(1),&tr);
+  }
+  struct spi_ioc_transfer tr={
+    .tx_buf=(unsigned long)(spi_msg+full_buffers*bytes_at_once),
+    .len=last_buffer_len,
+  };
+  ioctl(spifd,SPI_IOC_MESSAGE(1),&tr);
 }
 
 unsigned int millis (void)
