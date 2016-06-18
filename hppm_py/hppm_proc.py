@@ -91,7 +91,7 @@ use_gstreamer=config.getint("hppm_proc.py", "use_gstreamer")
 if use_gstreamer:
     remote_osc_server=config.get("hppm_proc.py", "remote_osc_server")
     remote_osc_port=config.getint("hppm_proc.py", "remote_osc_port")
-    if (use_ard_int or use_tcp) and bind_ip=='127.0.0.1' and remote_osc_server=='127.0.0.1' and bind_port==remote_osc_port:
+    if (use_ard_int or use_tcp) and (bind_ip=='127.0.0.1' or bind_ip=="localhost")  and (remote_osc_server=='127.0.0.1' or remote_osc_server=='localhost') and bind_port==remote_osc_port:
         use_local=1
     else:
         use_local=0
@@ -234,7 +234,7 @@ def start_tcp(tcp_server, tcp_port):
     s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     try:
-        s.connect((tcp_server, tcp_port))
+        s.connect((socket.gethostbyname(tcp_server), tcp_port))
         return s
     except:
         print time.strftime('[%H:%M:%S]')+' Could not connect to TCP Server.'
@@ -673,9 +673,9 @@ def setup_osc_client():
     ##import socket
     ##from txosc import osc, sync
     ##client=sync.UdpSender("hostip", 10233)
-
+    import socket
     client = OSC.OSCClient()
-    client.connect((remote_osc_server, remote_osc_port))
+    client.connect((socket.gethostbyname(remote_osc_server), remote_osc_port))
     return client
 
 def freq_to_band(freq):
