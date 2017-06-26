@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
   } else {
     reset_buf=(arr8c1 *)malloc(reset_buf_len*sizeof(uint8_t));
     memset(reset_buf,128,198657);
-    for (uint32_t i=196608;i<198657;i++){
+    for (uint32_t i=0;i<2048;i++){
       reset_buf[i]=0;
     }
   }
@@ -578,10 +578,6 @@ void setupvars(uint8_t r,uint8_t g,uint16_t b){
       writearrCi(def_arrBi, i, j, 0);
     }
   }
-  //Reset strip
-  uint8_t reset_buf[num_reset_bytes];
-  memset(reset_buf,0,num_reset_bytes);
-  spi_send(reset_buf, &num_reset_bytes);
   solidColor(0,0,0);
   show();
   printf("Running.\n");
@@ -740,9 +736,9 @@ void dis(){
   memset(spi_buf,0,spi_buf_len);
   if (sNum==0 || sNum==1){
     for (uint16_t i=0; i <= slen; i++){
-      spi_buf[i*3]=readarrP(i, 1) | 0x80;
-      spi_buf[i*3+1]=readarrP(i, 0) | 0x80;
-      spi_buf[i*3+2]=readarrP(i, 2) | 0x80;
+      spi_buf[(i+(slen/32)+1)*3]=readarrP(i, 1) | 0x80;
+      spi_buf[(i+(slen/32)+1)*3+1]=readarrP(i, 0) | 0x80;
+      spi_buf[(i+(slen/32)+1)*3+2]=readarrP(i, 2) | 0x80;
 //      printf("\n%u %u %u\n",readarrP(i, 1),readarrP(i, 0),readarrP(i, 2));
 //      printf("%u %u %u\n\n",spi_buf[i*3],spi_buf[i*3+1],spi_buf[i*3+2]);
     }
