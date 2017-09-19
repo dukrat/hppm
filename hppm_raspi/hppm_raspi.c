@@ -526,7 +526,7 @@ void setupvars(uint8_t r,uint8_t g,uint16_t b){
     arrP1=(arr8c3 *)malloc(32768 * 3 * sizeof(uint8_t));
     arrP2=(arr8c3 *)malloc(((slen+1)-32768) * 3 * sizeof(uint8_t));
   }
-  size_t num_reset_bytes=slen/32+1;
+  size_t num_reset_bytes=slen/32+2;
   spi_buf=(arr8c1 *)malloc(((slen+1)*3+num_reset_bytes) * sizeof(uint8_t));
   //Calculate memory left for color wave arrays
     alen=(slen+1)*3;
@@ -732,21 +732,21 @@ uint8_t readarrP(uint16_t p1, uint8_t p2){
 //}
 
 void dis(){
-  size_t spi_buf_len=(slen+1)*3+(slen/32+1);
+  size_t spi_buf_len=(slen+1)*3+(slen/32+2);
   memset(spi_buf,0,spi_buf_len);
   if (sNum==0 || sNum==1){
     for (uint16_t i=0; i <= slen; i++){
-      spi_buf[(i+(slen/32)+1)*3]=readarrP(i, 1) | 0x80;
-      spi_buf[(i+(slen/32)+1)*3+1]=readarrP(i, 0) | 0x80;
-      spi_buf[(i+(slen/32)+1)*3+2]=readarrP(i, 2) | 0x80;
+      spi_buf[(slen/32+2)+i*3]=readarrP(i, 1) | 0x80;
+      spi_buf[(slen/32+2)+i*3+1]=readarrP(i, 0) | 0x80;
+      spi_buf[(slen/32+2)+i*3+2]=readarrP(i, 2) | 0x80;
 //      printf("\n%u %u %u\n",readarrP(i, 1),readarrP(i, 0),readarrP(i, 2));
 //      printf("%u %u %u\n\n",spi_buf[i*3],spi_buf[i*3+1],spi_buf[i*3+2]);
     }
   } else if (sNum==4 || sNum==5){
     for (uint16_t i=0; i <= slen; i++){
-      spi_buf[i*3]=readarrP(i, 2) | 0x80;
-      spi_buf[i*3+1]=readarrP(i, 0) | 0x80;
-      spi_buf[i*3+2]=readarrP(i, 1) | 0x80;
+      spi_buf[(slen/32+2)+i*3]=readarrP(i, 2) | 0x80;
+      spi_buf[(slen/32+2)+i*3+1]=readarrP(i, 0) | 0x80;
+      spi_buf[(slen/32+2)+i*3+2]=readarrP(i, 1) | 0x80;
     }
   }
 //  for (uint16_t i=0; i <=num_reset_bits; i++){
