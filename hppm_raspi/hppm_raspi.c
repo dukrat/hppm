@@ -285,7 +285,7 @@ void colorwaveR(uint8_t r, uint8_t g, uint16_t b, uint8_t p){
       }
       tmp1_8=readarrCc(def_arrRc, i);
       if (fade < tmp1_8){
-        writearrCc(def_arrRc, i, (int)(tmp1_8-fade));
+        writearrCc(def_arrRc, i, (int)roundf(tmp1_8-fade));
       } else if (readarrCc(def_arrRc, i) != 0){
         writearrCc(def_arrRc, i, 0);
       }
@@ -355,7 +355,7 @@ void colorwaveG(uint8_t r, uint8_t g, uint16_t b, uint8_t p){
       }
       tmp1_8=readarrCc(def_arrGc, i);
       if (fade < tmp1_8){
-        writearrCc(def_arrGc, i, (int)(tmp1_8-fade));
+        writearrCc(def_arrGc, i, (int)roundf(tmp1_8-fade));
       } else if (readarrCc(def_arrGc, i) != 0){
         writearrCc(def_arrGc, i, 0); 
       }
@@ -425,7 +425,7 @@ void colorwaveB(uint8_t r, uint8_t g, uint16_t b, uint8_t p){
       }
       tmp1_8=readarrCc(def_arrBc, i);
       if (fade < tmp1_8){
-        writearrCc(def_arrBc, i, (int)(tmp1_8-fade));
+        writearrCc(def_arrBc, i, (int)roundf(tmp1_8-fade));
       } else if (readarrCc(def_arrBc, i) != 0){
         writearrCc(def_arrBc, i, 0);
       }
