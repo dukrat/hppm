@@ -12,7 +12,6 @@
 #include <sys/time.h>
 #include <stdio.h>
 #include <poll.h>
-#include <math.h>
 void procInst();
 void colorwaveR(uint8_t r, uint8_t g, uint16_t b, uint8_t p);
 void colorwaveG(uint8_t r, uint8_t g, uint16_t b, uint8_t p);
@@ -261,7 +260,6 @@ void procInst(){
 
 void colorwaveR(uint8_t r, uint8_t g, uint16_t b, uint8_t p){
   lR=r;
-  float fade=p/10.0;
   if (millis()-lwR>=g){
     lwR=millis();
     writearrCc(def_arrRc, rowR, lR);
@@ -285,8 +283,8 @@ void colorwaveR(uint8_t r, uint8_t g, uint16_t b, uint8_t p){
         i=(rowR+j)%(alen+1);
       }
       tmp1_8=readarrCc(def_arrRc, i);
-      if (fade < tmp1_8){
-        writearrCc(def_arrRc, i, (int)roundf(tmp1_8-fade));
+      if (tmp1_8 > p){
+        writearrCc(def_arrRc, i, tmp1_8-p);
       } else if (readarrCc(def_arrRc, i) != 0){
         writearrCc(def_arrRc, i, 0);
       }
@@ -331,7 +329,6 @@ void colorwaveR(uint8_t r, uint8_t g, uint16_t b, uint8_t p){
 
 void colorwaveG(uint8_t r, uint8_t g, uint16_t b, uint8_t p){
   lG=r;
-  float fade=p/10.0;
   if (millis()-lwG>=g){
     lwG=millis();
     writearrCc(def_arrGc, rowG, lG);
@@ -355,8 +352,8 @@ void colorwaveG(uint8_t r, uint8_t g, uint16_t b, uint8_t p){
         i=(rowG+j)%(alen+1);
       }
       tmp1_8=readarrCc(def_arrGc, i);
-      if (fade < tmp1_8){
-        writearrCc(def_arrGc, i, (int)roundf(tmp1_8-fade));
+      if (tmp1_8 > p){
+        writearrCc(def_arrGc, i, tmp1_8-p);
       } else if (readarrCc(def_arrGc, i) != 0){
         writearrCc(def_arrGc, i, 0); 
       }
@@ -401,7 +398,6 @@ void colorwaveG(uint8_t r, uint8_t g, uint16_t b, uint8_t p){
 
 void colorwaveB(uint8_t r, uint8_t g, uint16_t b, uint8_t p){
   lB=r;
-  float fade=p/10.0;
   if (millis()-lwB>=g){
     lwB=millis();
     writearrCc(def_arrBc, rowB, lB);
@@ -425,8 +421,8 @@ void colorwaveB(uint8_t r, uint8_t g, uint16_t b, uint8_t p){
         i=(rowB+j)%(alen+1);
       }
       tmp1_8=readarrCc(def_arrBc, i);
-      if (fade < tmp1_8){
-        writearrCc(def_arrBc, i, (int)roundf(tmp1_8-fade));
+      if (tmp1_8 > p){
+        writearrCc(def_arrBc, i, tmp1_8-p);
       } else if (readarrCc(def_arrBc, i) != 0){
         writearrCc(def_arrBc, i, 0);
       }
