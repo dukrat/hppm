@@ -141,8 +141,8 @@ elif sType=="WS2801":
     sNum=2
     maxBright=255
 else:
-    print time.strftime('[%H:%M:%S]')+' Incorrect sType specified.  Exiting...'
-    print time.strftime('[%H:%M:%S]')+' Program exited.'
+    print(time.strftime('[%H:%M:%S]')+' Incorrect sType specified.  Exiting...')
+    print(time.strftime('[%H:%M:%S]')+' Program exited.')
     exit()
 
 if psyon:
@@ -237,7 +237,7 @@ def start_tcp(tcp_server, tcp_port):
         s.connect((socket.gethostbyname(tcp_server), tcp_port))
         return s
     except:
-        print time.strftime('[%H:%M:%S]')+' Could not connect to TCP Server.'
+        print(time.strftime('[%H:%M:%S]')+' Could not connect to TCP Server.')
         s.close()
         return 'NULL'
 #        if use_gstreamer:
@@ -247,7 +247,7 @@ def start_tcp(tcp_server, tcp_port):
     
 
 def main():
-    print time.strftime('[%H:%M:%S]')+' Program started.'
+    print(time.strftime('[%H:%M:%S]')+' Program started.')
     global tcp_sock,quit_list
     if use_tcp:
         tcp_sock=start_tcp(config.get("hppm_proc.py", "tcp_server"),config.getint("hppm_proc.py", "tcp_port"))
@@ -321,7 +321,7 @@ def main():
                 quit_program(quit_list)
 
 def quit_program((tcp_sock,pipeline,bus,client,port,osc,osct)):
-    print time.strftime('[%H:%M:%S]')+' Exiting...'
+    print(time.strftime('[%H:%M:%S]')+' Exiting...')
     if use_gstreamer:
         pipeline.set_state(Gst.State.NULL)
         bus.remove_watch()
@@ -343,7 +343,7 @@ def quit_program((tcp_sock,pipeline,bus,client,port,osc,osct)):
             port.close()
         if tcp_sock!='NULL':
             tcp_sock.close()
-    print time.strftime('[%H:%M:%S]')+' Program exited.'
+    print(time.strftime('[%H:%M:%S]')+' Program exited.')
     exit()
 
 
@@ -461,17 +461,17 @@ def setB(NULL1,NULL2,nB,NULL3):
 def setsR(NULL1,NULL2,nsR,NULL3):
     global sR
     sR=nsR[0]
-    print time.strftime('[%H:%M:%S]')+' Red averaging time: '+str(1000*sR/datar)+'ms.'
+    print(time.strftime('[%H:%M:%S]')+' Red averaging time: '+str(1000*sR/datar)+'ms.')
 
 def setsG(NULL1,NULL2,nsG,NULL3):
     global sG
     sG=nsG[0]
-    print time.strftime('[%H:%M:%S]')+' Green averaging time: '+str(1000*sG/datar)+'ms.'
+    print(time.strftime('[%H:%M:%S]')+' Green averaging time: '+str(1000*sG/datar)+'ms.')
 
 def setsB(NULL1,NULL2,nsB,NULL3):
     global sB
     sB=nsB[0]
-    print time.strftime('[%H:%M:%S]')+' Blue averaging time: '+str(1000*sB/datar)+'ms.'
+    print(time.strftime('[%H:%M:%S]')+' Blue averaging time: '+str(1000*sB/datar)+'ms.')
 
 def setmR(NULL1,NULL2,nmR,NULL3):
     global mR
@@ -479,11 +479,11 @@ def setmR(NULL1,NULL2,nmR,NULL3):
     if mR==1:
         global tiR
         tiR=0
-        print time.strftime('[%H:%M:%S]')+' Red in test mode.'
+        print(time.strftime('[%H:%M:%S]')+' Red in test mode.')
     elif mR==2:
-        print time.strftime('[%H:%M:%S]')+' Red in sequential test mode.'
+        print(time.strftime('[%H:%M:%S]')+' Red in sequential test mode.')
     else:
-        print time.strftime('[%H:%M:%S]')+' Red in color mode.'
+        print(time.strftime('[%H:%M:%S]')+' Red in color mode.')
 
 def setmG(NULL1,NULL2,nmG,NULL3):
     global mG
@@ -491,11 +491,11 @@ def setmG(NULL1,NULL2,nmG,NULL3):
     if mG==1:
         global tiG
         tiG=0
-        print time.strftime('[%H:%M:%S]')+' Green in test mode.'
+        print(time.strftime('[%H:%M:%S]')+' Green in test mode.')
     elif mG==2:
-        print time.strftime('[%H:%M:%S]')+' Green in sequential test mode.'
+        print(time.strftime('[%H:%M:%S]')+' Green in sequential test mode.')
     else:
-        print time.strftime('[%H:%M:%S]')+' Green in color mode.'
+        print(time.strftime('[%H:%M:%S]')+' Green in color mode.')
 
 def setmB(NULL1,NULL2,nmB,NULL3):
     global mB
@@ -503,50 +503,50 @@ def setmB(NULL1,NULL2,nmB,NULL3):
     if mB==1:
         global tiB
         tiB=0
-        print time.strftime('[%H:%M:%S]')+' Blue in test mode.'
+        print(time.strftime('[%H:%M:%S]')+' Blue in test mode.')
     elif mB==2:
-        print time.strftime('[%H:%M:%S]')+' Blue in sequential test mode.'
+        print(time.strftime('[%H:%M:%S]')+' Blue in sequential test mode.')
     else:
-        print time.strftime('[%H:%M:%S]')+' Blue in color mode.'
+        print(time.strftime('[%H:%M:%S]')+' Blue in color mode.')
 
 def setwsR(NULL1,NULL2,nwsR,NULL3):
     global wsR
     wsR=nwsR[0]
-    print time.strftime('[%H:%M:%S]')+' Red wave delay: '+str(1/wsR)+'ms between jumps.'
+    print(time.strftime('[%H:%M:%S]')+' Red wave delay: '+str(1/wsR)+'ms between jumps.')
 
 def setwsG(NULL1,NULL2,nwsG,NULL3):
     global wsG
     wsG=nwsG[0]
-    print time.strftime('[%H:%M:%S]')+' Green wave delay: '+str(1/wsG)+'ms between jumps.'
+    print(time.strftime('[%H:%M:%S]')+' Green wave delay: '+str(1/wsG)+'ms between jumps.')
 
 def setwsB(NULL1,NULL2,nwsB,NULL3):
     global wsB
     wsB=nwsB[0]
-    print time.strftime('[%H:%M:%S]')+' Blue wave delay: '+str(1/wsB)+'ms betweenjumps .'
+    print(time.strftime('[%H:%M:%S]')+' Blue wave delay: '+str(1/wsB)+'ms betweenjumps .')
     
 def setwoR(NULL1,NULL2,nwoR,NULL3):
     global woR
     woR=nwoR[0]
     if woR==0:
-        print time.strftime('[%H:%M:%S]')+' Red wavemode offlined.'
+        print(time.strftime('[%H:%M:%S]')+' Red wavemode offlined.')
     if woR==1:
-        print time.strftime('[%H:%M:%S]')+' Red wavemode onlined.'
+        print(time.strftime('[%H:%M:%S]')+' Red wavemode onlined.')
 
 def setwoG(NULL1,NULL2,nwoG,NULL3):
     global woG
     woG=nwoG[0]
     if woG==0:
-        print time.strftime('[%H:%M:%S]')+' Green wavemode offlined.'
+        print(time.strftime('[%H:%M:%S]')+' Green wavemode offlined.')
     if woG==1:
-        print time.strftime('[%H:%M:%S]')+' Green wavemode onlined.'
+        print(time.strftime('[%H:%M:%S]')+' Green wavemode onlined.')
 
 def setwoB(NULL1,NULL2,nwoB,NULL3):
     global woB
     woB=nwoB[0]
     if woB==0:
-        print time.strftime('[%H:%M:%S]')+' Blue wavemode offlined.'
+        print(time.strftime('[%H:%M:%S]')+' Blue wavemode offlined.')
     if woB==1:
-        print time.strftime('[%H:%M:%S]')+' Blue wavemode onlined.'
+        print(time.strftime('[%H:%M:%S]')+' Blue wavemode onlined.')
 
 def sendT(cV,dV,port,tcp_sock):
     if cV=="R":
@@ -622,13 +622,13 @@ def write(i,p,r,g,b,port,tcp_sock_local):
         try:
             tcp_sock_local.send(b_arr)
         except:
-            print time.strftime('[%H:%M:%S]')+' TCP send error, trying to reconnect...'
+            print(time.strftime('[%H:%M:%S]')+' TCP send error, trying to reconnect...')
             global tcp_sock,quit_list
             if tcp_sock!='NULL':
                 tcp_sock_local.close()
             tcp_sock=start_tcp(config.get("hppm_proc.py", "tcp_server"),config.getint("hppm_proc.py", "tcp_port"))
             if tcp_sock!='NULL':
-                print time.strftime('[%H:%M:%S]')+' TCP reconnected.'
+                print(time.strftime('[%H:%M:%S]')+' TCP reconnected.')
             quit_list[0]=tcp_sock
     if use_ard_int:
         for k in b_arr:
@@ -771,7 +771,7 @@ def start_gst():
     #bus.connect('message', playerbin_message)
     bus.add_watch(0, playerbin_message)
     pipeline.set_state(Gst.State.PLAYING)
-    print time.strftime('[%H:%M:%S]')+' pipeline PLAYING'
+    print(time.strftime('[%H:%M:%S]')+' pipeline PLAYING')
     return pipeline,bus
 
 if use_gstreamer:
