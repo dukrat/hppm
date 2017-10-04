@@ -79,7 +79,7 @@ if use_ard_int or use_tcp:
     pB=dpB
     use_osc_server=config.getint("hppm_proc.py", "use_osc_server")
     if use_osc_server:
-        import pythonosc.udp_client pythonosc.osc_bundle_builder pythonosc.osc_message_builder pythonosc.dispatcher
+        import pythonosc.udp_client, pythonosc.osc_bundle_builder, pythonosc.osc_message_builder, pythonosc.dispatcher
     bind_ip=config.get("hppm_proc.py", "bind_ip")
     if bind_ip==0:
         temp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -95,7 +95,7 @@ if use_gstreamer:
         use_local=1
     else:
         use_local=0
-        import pythonosc.udp_client pythonosc.osc_bundle_builder pythonosc.osc_message_builder pythonosc.dispatcher
+        import pythonosc.udp_client, pythonosc.osc_bundle_builder, pythonosc.osc_message_builder, pythonosc.dispatcher
     import gi, re
     gi.require_version('Gst', '1.0')
     from gi.repository import GObject, Gst
@@ -722,18 +722,16 @@ def playerbin_message(bus,message):
                 setG('NULL','NULL',[mid_adj],'NULL')
                 setB('NULL','NULL',[high_adj],'NULL')
             else:
-                bb = pythonosc.osc_bundle_builder.OscBundleBuilder()
+                bb = pythonosc.osc_bundle_builder.OscBundleBuilder(python.osc_bundle_builder.IMMEDIATELY)
                 mb = pythonosc.osc_message_builder.OscMessageBuilder(address="/R")
-                mb.add_argf(int(low_adj))
-                bb.add_contnt(mb.build())
-                bb = pythonosc.osc_bundle_builder.OscBundleBuilder()
+                mb.add_arg(int(low_adj))
+                bb.add_content(mb.build())
                 mb = pythonosc.osc_message_builder.OscMessageBuilder(address="/G")
-                mb.add_argf(int(mid_adj))
-                bb.add_contnt(mb.build())
-                bb = pythonosc.osc_bundle_builder.OscBundleBuilder()
+                mb.add_arg(int(mid_adj))
+                bb.add_content(mb.build())
                 mb = pythonosc.osc_message_builder.OscMessageBuilder(address="/B")
-                mb.add_argf(int(high_adj))
-                bb.add_contnt(mb.build())
+                mb.add_arg(int(high_adj))
+                bb.add_content(mb.build())
                 client.send(bb.build())
     #            client.send(OSC.OSCMessage("/R"+[int(low_adj)]))
     #            client.send(OSC.OSCMessage("/G"+[int(mid_adj)]))
