@@ -439,43 +439,43 @@ def avg():
         nwB=nwB+aB[(aiB-i+datar)%datar]
     nwB=int(round(nwB/asB))
 
-def setR(NULL1,NULL2,nR,NULL3):
+def setR(unused_addr, nR):
     global R, iR
     if nR[0]>maxBright:
         nR[0]=maxBright
     iR=(iR+1)%datar
     R[iR]=nR[0]
 
-def setG(NULL1,NULL2,nG,NULL3):
+def setG(unused_addr, nG):
     global G, iG
     if nG[0]>maxBright:
         nG[0]=maxBright
     iG=(iG+1)%datar
     G[iG]=nG[0]
 
-def setB(NULL1,NULL2,nB,NULL3):
+def setB(unused_addr, nB):
     global B, iB
     if nB[0]>maxBright:
         nB[0]=maxBright
     iB=(iB+1)%datar
     B[iB]=nB[0]
 
-def setsR(NULL1,NULL2,nsR,NULL3):
+def setsR(unused_addr, nsR):
     global sR
     sR=nsR[0]
     print(time.strftime('[%H:%M:%S]')+' Red averaging time: '+str(1000*sR/datar)+'ms.')
 
-def setsG(NULL1,NULL2,nsG,NULL3):
+def setsG(unused_addr, nsG):
     global sG
     sG=nsG[0]
     print(time.strftime('[%H:%M:%S]')+' Green averaging time: '+str(1000*sG/datar)+'ms.')
 
-def setsB(NULL1,NULL2,nsB,NULL3):
+def setsB(unused_addr, nsB):
     global sB
     sB=nsB[0]
     print(time.strftime('[%H:%M:%S]')+' Blue averaging time: '+str(1000*sB/datar)+'ms.')
 
-def setmR(NULL1,NULL2,nmR,NULL3):
+def setmR(unused_addr, nmR):
     global mR
     mR=nmR[0]
     if mR==1:
@@ -487,7 +487,7 @@ def setmR(NULL1,NULL2,nmR,NULL3):
     else:
         print(time.strftime('[%H:%M:%S]')+' Red in color mode.')
 
-def setmG(NULL1,NULL2,nmG,NULL3):
+def setmG(unused_addr, nmG):
     global mG
     mG=nmG[0]
     if mG==1:
@@ -499,7 +499,7 @@ def setmG(NULL1,NULL2,nmG,NULL3):
     else:
         print(time.strftime('[%H:%M:%S]')+' Green in color mode.')
 
-def setmB(NULL1,NULL2,nmB,NULL3):
+def setmB(unused_addr, nmB):
     global mB
     mB=nmB[0]
     if mB==1:
@@ -511,22 +511,22 @@ def setmB(NULL1,NULL2,nmB,NULL3):
     else:
         print(time.strftime('[%H:%M:%S]')+' Blue in color mode.')
 
-def setwsR(NULL1,NULL2,nwsR,NULL3):
+def setwsR(unused_addr, nwsR):
     global wsR
     wsR=nwsR[0]
     print(time.strftime('[%H:%M:%S]')+' Red wave delay: '+str(1/wsR)+'ms between jumps.')
 
-def setwsG(NULL1,NULL2,nwsG,NULL3):
+def setwsG(unused_addr, nwsG):
     global wsG
     wsG=nwsG[0]
     print(time.strftime('[%H:%M:%S]')+' Green wave delay: '+str(1/wsG)+'ms between jumps.')
 
-def setwsB(NULL1,NULL2,nwsB,NULL3):
+def setwsB(unused_addr, nwsB):
     global wsB
     wsB=nwsB[0]
     print(time.strftime('[%H:%M:%S]')+' Blue wave delay: '+str(1/wsB)+'ms betweenjumps .')
     
-def setwoR(NULL1,NULL2,nwoR,NULL3):
+def setwoR(unused_addr, nwoR):
     global woR
     woR=nwoR[0]
     if woR==0:
@@ -534,7 +534,7 @@ def setwoR(NULL1,NULL2,nwoR,NULL3):
     if woR==1:
         print(time.strftime('[%H:%M:%S]')+' Red wavemode onlined.')
 
-def setwoG(NULL1,NULL2,nwoG,NULL3):
+def setwoG(unused_addr, nwoG):
     global woG
     woG=nwoG[0]
     if woG==0:
@@ -542,7 +542,7 @@ def setwoG(NULL1,NULL2,nwoG,NULL3):
     if woG==1:
         print(time.strftime('[%H:%M:%S]')+' Green wavemode onlined.')
 
-def setwoB(NULL1,NULL2,nwoB,NULL3):
+def setwoB(unused_addr, nwoB):
     global woB
     woB=nwoB[0]
     if woB==0:
@@ -717,9 +717,9 @@ def playerbin_message(bus,message):
 ##              client.send(osc.Message("/G", int(mid_adj)))
 ##              client.send(osc.Message("/B", int(high_adj)))
             if use_local:
-                setR('NULL','NULL',[low_adj],'NULL')
-                setG('NULL','NULL',[mid_adj],'NULL')
-                setB('NULL','NULL',[high_adj],'NULL')
+                setR('/R',[low_adj])
+                setG('/G',[mid_adj])
+                setB('/B',[high_adj])
             else:
                 bb = pythonosc.osc_bundle_builder.OscBundleBuilder(pythonosc.osc_bundle_builder.IMMEDIATELY)
                 mb = pythonosc.osc_message_builder.OscMessageBuilder(address="/R")
