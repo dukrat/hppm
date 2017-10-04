@@ -79,7 +79,7 @@ if use_ard_int or use_tcp:
     pB=dpB
     use_osc_server=config.getint("hppm_proc.py", "use_osc_server")
     if use_osc_server:
-        import pythonosc
+        import pythonosc.udp_client pythonosc.osc_bundle_builder pythonosc.osc_message_builder pythonosc.dispatcher
     bind_ip=config.get("hppm_proc.py", "bind_ip")
     if bind_ip==0:
         temp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -95,7 +95,7 @@ if use_gstreamer:
         use_local=1
     else:
         use_local=0
-        import pythonosc
+        import pythonosc.udp_client pythonosc.osc_bundle_builder pythonosc.osc_message_builder pythonosc.dispatcher
     import gi, re
     gi.require_version('Gst', '1.0')
     from gi.repository import GObject, Gst
@@ -677,7 +677,7 @@ def setup_osc_client():
     ##client=sync.UdpSender("hostip", 10233)
     import socket
     clienta = (socket.gethostbyname(remote_osc_server), remote_osc_port)
-    client = pythonosc.upd_client.UDPClient(clienta)
+    client = pythonosc.udp_client.UDPClient(clienta)
     return client
 
 def freq_to_band(freq):
