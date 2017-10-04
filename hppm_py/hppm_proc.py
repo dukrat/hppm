@@ -79,7 +79,7 @@ if use_ard_int or use_tcp:
     pB=dpB
     use_osc_server=config.getint("hppm_proc.py", "use_osc_server")
     if use_osc_server:
-        import pythonosc.udp_client, pythonosc.osc_bundle_builder, pythonosc.osc_message_builder, pythonosc.dispatcher
+        import pythonosc.udp_client, pythonosc.osc_bundle_builder, pythonosc.osc_message_builder, pythonosc.dispatcher, pythonosc.osc_server
     bind_ip=config.get("hppm_proc.py", "bind_ip")
     if bind_ip==0:
         temp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -95,7 +95,7 @@ if use_gstreamer:
         use_local=1
     else:
         use_local=0
-        import pythonosc.udp_client, pythonosc.osc_bundle_builder, pythonosc.osc_message_builder, pythonosc.dispatcher
+        import pythonosc.udp_client, pythonosc.osc_bundle_builder, pythonosc.osc_message_builder, pythonosc.dispatcher, pythonosc.osc_server
     import gi, re
     gi.require_version('Gst', '1.0')
     from gi.repository import GObject, Gst
