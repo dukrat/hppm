@@ -440,44 +440,45 @@ def avg():
     nwB=int(round(nwB/asB))
 
 def setR(unused_addr, nR):
+    print(nR)
     global R, iR
-    if nR[0]>maxBright:
-        nR[0]=maxBright
+    if nR>maxBright:
+        nR=maxBright
     iR=(iR+1)%datar
-    R[iR]=nR[0]
+    R[iR]=nR
 
 def setG(unused_addr, nG):
     global G, iG
-    if nG[0]>maxBright:
-        nG[0]=maxBright
+    if nG>maxBright:
+        nG=maxBright
     iG=(iG+1)%datar
-    G[iG]=nG[0]
+    G[iG]=nG
 
 def setB(unused_addr, nB):
     global B, iB
-    if nB[0]>maxBright:
-        nB[0]=maxBright
+    if nB>maxBright:
+        nB=maxBright
     iB=(iB+1)%datar
-    B[iB]=nB[0]
+    B[iB]=nB
 
 def setsR(unused_addr, nsR):
     global sR
-    sR=nsR[0]
+    sR=nsR
     print(time.strftime('[%H:%M:%S]')+' Red averaging time: '+str(1000*sR/datar)+'ms.')
 
 def setsG(unused_addr, nsG):
     global sG
-    sG=nsG[0]
+    sG=nsG
     print(time.strftime('[%H:%M:%S]')+' Green averaging time: '+str(1000*sG/datar)+'ms.')
 
 def setsB(unused_addr, nsB):
     global sB
-    sB=nsB[0]
+    sB=nsB
     print(time.strftime('[%H:%M:%S]')+' Blue averaging time: '+str(1000*sB/datar)+'ms.')
 
 def setmR(unused_addr, nmR):
     global mR
-    mR=nmR[0]
+    mR=nmR
     if mR==1:
         global tiR
         tiR=0
@@ -489,7 +490,7 @@ def setmR(unused_addr, nmR):
 
 def setmG(unused_addr, nmG):
     global mG
-    mG=nmG[0]
+    mG=nmG
     if mG==1:
         global tiG
         tiG=0
@@ -501,7 +502,7 @@ def setmG(unused_addr, nmG):
 
 def setmB(unused_addr, nmB):
     global mB
-    mB=nmB[0]
+    mB=nmB
     if mB==1:
         global tiB
         tiB=0
@@ -513,22 +514,22 @@ def setmB(unused_addr, nmB):
 
 def setwsR(unused_addr, nwsR):
     global wsR
-    wsR=nwsR[0]
+    wsR=nwsR
     print(time.strftime('[%H:%M:%S]')+' Red wave delay: '+str(1/wsR)+'ms between jumps.')
 
 def setwsG(unused_addr, nwsG):
     global wsG
-    wsG=nwsG[0]
+    wsG=nwsG
     print(time.strftime('[%H:%M:%S]')+' Green wave delay: '+str(1/wsG)+'ms between jumps.')
 
 def setwsB(unused_addr, nwsB):
     global wsB
-    wsB=nwsB[0]
+    wsB=nwsB
     print(time.strftime('[%H:%M:%S]')+' Blue wave delay: '+str(1/wsB)+'ms betweenjumps .')
     
 def setwoR(unused_addr, nwoR):
     global woR
-    woR=nwoR[0]
+    woR=nwoR
     if woR==0:
         print(time.strftime('[%H:%M:%S]')+' Red wavemode offlined.')
     if woR==1:
@@ -536,7 +537,7 @@ def setwoR(unused_addr, nwoR):
 
 def setwoG(unused_addr, nwoG):
     global woG
-    woG=nwoG[0]
+    woG=nwoG
     if woG==0:
         print(time.strftime('[%H:%M:%S]')+' Green wavemode offlined.')
     if woG==1:
@@ -544,7 +545,7 @@ def setwoG(unused_addr, nwoG):
 
 def setwoB(unused_addr, nwoB):
     global woB
-    woB=nwoB[0]
+    woB=nwoB
     if woB==0:
         print(time.strftime('[%H:%M:%S]')+' Blue wavemode offlined.')
     if woB==1:
@@ -717,9 +718,9 @@ def playerbin_message(bus,message):
 ##              client.send(osc.Message("/G", int(mid_adj)))
 ##              client.send(osc.Message("/B", int(high_adj)))
             if use_local:
-                setR('/R',[low_adj])
-                setG('/G',[mid_adj])
-                setB('/B',[high_adj])
+                setR('/R',low_adj)
+                setG('/G',mid_adj)
+                setB('/B',high_adj)
             else:
                 bb = pythonosc.osc_bundle_builder.OscBundleBuilder(pythonosc.osc_bundle_builder.IMMEDIATELY)
                 mb = pythonosc.osc_message_builder.OscMessageBuilder(address="/R")
