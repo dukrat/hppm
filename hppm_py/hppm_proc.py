@@ -320,7 +320,8 @@ def main():
             if sigExit.exit_v:
                 quit_program(quit_list)
 
-def quit_program((tcp_sock,pipeline,bus,client,port,osc,osct)):
+def quit_program(quit_list):
+    (tcp_sock,pipeline,bus,client,port,osc,osct) = quit_list
     print(time.strftime('[%H:%M:%S]')+' Exiting...')
     if use_gstreamer:
         pipeline.set_state(Gst.State.NULL)
@@ -387,21 +388,21 @@ def testB(port,tcp_sock):
     tiB=(tiB+1)%(maxBright*2)
 
 def testsR(port,tcp_sock):
-    for i in xrange(maxBright+1):
+    for i in range(maxBright+1):
         sendT("R",i,port,tcp_sock)
-    for i in xrange(maxBright):
+    for i in range(maxBright):
         sendT("R",maxBright-1-i,port,tcp_sock)
 
 def testsG(port,tcp_sock):
-    for i in xrange(maxBright+1):
+    for i in range(maxBright+1):
         sendT("G",i,port,tcp_sock)
-    for i in xrange(maxBright):
+    for i in range(maxBright):
         sendT("G",maxBright-1-i,port,tcp_sock)
 
 def testsB(port,tcp_sock):
-    for i in xrange(maxBright+1):
+    for i in range(maxBright+1):
         sendT("B",i,port,tcp_sock)
-    for i in xrange(maxBright):
+    for i in range(maxBright):
         sendT("B",maxBright-1-i,port,tcp_sock)
 
 def rwalkR(port,tcp_sock):
@@ -427,13 +428,13 @@ def avg():
     nwR=0
     nwG=0
     nwB=0
-    for i in xrange(asR):
+    for i in range(asR):
         nwR=nwR+aR[(aiR-i+datar)%datar]
     nwR=int(round(nwR/asR))
-    for i in xrange(asG):
+    for i in range(asG):
         nwG=nwG+aG[(aiG-i+datar)%datar]
     nwG=int(round(nwG/asG))
-    for i in xrange(asB):
+    for i in range(asB):
         nwB=nwB+aB[(aiB-i+datar)%datar]
     nwB=int(round(nwB/asB))
 
@@ -651,15 +652,15 @@ def sendSCslow(cV,dV,port,tcp_sock):
     global lR, lG, lB
     if cV=="R":
         lR=dV
-        for i in xrange(numLights):
+        for i in range(numLights):
             write(ns,i,lR,lG,lB,port,tcp_sock)
     elif cV=="G":
         lG=dV
-        for i in xrange(numLights):
+        for i in range(numLights):
             write(ns,i,lR,lG,lB,port,tcp_sock)
     elif cV=="B":
         lB=dV
-        for i in xrange(numLights):
+        for i in range(numLights):
             write(ns,i,lR,lG,lB,port,tcp_sock)
 
 def setup_osc_client():
