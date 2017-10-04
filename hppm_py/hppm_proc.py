@@ -8,9 +8,9 @@ cwR=251
 cwG=252
 cwB=253
 def_ret=17 #time to send a new byte
-import serial, time, threading, datetime, struct, random, ConfigParser
+import serial, time, threading, datetime, struct, random, configparser
 import signal, sys
-config=ConfigParser.RawConfigParser()
+config=configparser.RawConfigParser()
 if len(sys.argv)==2:
     config.read(sys.argv[1])
 else:
