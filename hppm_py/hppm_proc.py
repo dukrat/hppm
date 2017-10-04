@@ -721,7 +721,7 @@ def playerbin_message(bus,message):
                 setG('NULL','NULL',[mid_adj],'NULL')
                 setB('NULL','NULL',[high_adj],'NULL')
             else:
-                bb = pythonosc.osc_bundle_builder.OscBundleBuilder(python.osc_bundle_builder.IMMEDIATELY)
+                bb = pythonosc.osc_bundle_builder.OscBundleBuilder(pythonosc.osc_bundle_builder.IMMEDIATELY)
                 mb = pythonosc.osc_message_builder.OscMessageBuilder(address="/R")
                 mb.add_arg(int(low_adj))
                 bb.add_content(mb.build())
