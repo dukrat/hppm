@@ -676,8 +676,7 @@ def setup_osc_client():
     ##from txosc import osc, sync
     ##client=sync.UdpSender("hostip", 10233)
     import socket
-    clienta = (socket.gethostbyname(remote_osc_server), remote_osc_port)
-    client = pythonosc.udp_client.UDPClient(clienta)
+    client = pythonosc.udp_client.UDPClient(socket.gethostbyname(remote_osc_server), remote_osc_port)
     return client
 
 def freq_to_band(freq):
