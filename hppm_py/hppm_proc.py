@@ -440,7 +440,6 @@ def avg():
     nwB=int(round(nwB/asB))
 
 def setR(unused_addr, nR):
-    print(nR)
     global R, iR
     if nR>maxBright:
         nR=maxBright
