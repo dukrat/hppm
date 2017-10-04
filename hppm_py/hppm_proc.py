@@ -79,7 +79,7 @@ if use_ard_int or use_tcp:
     pB=dpB
     use_osc_server=config.getint("hppm_proc.py", "use_osc_server")
     if use_osc_server:
-        import OSC
+        import pythonosc
     bind_ip=config.get("hppm_proc.py", "bind_ip")
     if bind_ip==0:
         temp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -95,7 +95,7 @@ if use_gstreamer:
         use_local=1
     else:
         use_local=0
-        import OSC
+        import pythonosc
     import gi, re
     gi.require_version('Gst', '1.0')
     from gi.repository import GObject, Gst
@@ -200,25 +200,26 @@ def initBP(port): #Test if BP is already online, may get out of some modes TBR
         port.write('y')     # confirm entry to bridge
 
 def start_osc_server():
-    #define OSC server
-    osc=OSC.ThreadingOSCServer((bind_ip, bind_port))
-    osct=threading.Thread(target=osc.serve_forever)
     #setup and start the OSC server
-    osc.addMsgHandler('/R', setR)
-    osc.addMsgHandler('/G', setG)
-    osc.addMsgHandler('/B', setB)
-    osc.addMsgHandler('/mR', setmR)
-    osc.addMsgHandler('/mG', setmG)
-    osc.addMsgHandler('/mB', setmB)
-    osc.addMsgHandler('/sR', setsR)
-    osc.addMsgHandler('/sG', setsG)
-    osc.addMsgHandler('/sB', setsB)
-    osc.addMsgHandler('/wsR', setwsR)
-    osc.addMsgHandler('/wsG', setwsG)
-    osc.addMsgHandler('/wsB', setwsB)
-    osc.addMsgHandler('/woR', setwoR)
-    osc.addMsgHandler('/woG', setwoG)
-    osc.addMsgHandler('/woB', setwoB)
+    oscd = pythonosc.dispatcher.Dispatcher()
+    oscd.map('/R', setR)
+    oscd.map('/G', setG)
+    oscd.map('/B', setB)
+    oscd.map('/mR', setmR)
+    oscd.map('/mG', setmG)
+    oscd.map('/mB', setmB)
+    oscd.map('/sR', setsR)
+    oscd.map('/sG', setsG)
+    oscd.map('/sB', setsB)
+    oscd.map('/wsR', setwsR)
+    oscd.map('/wsG', setwsG)
+    oscd.map('/wsB', setwsB)
+    oscd.map('/woR', setwoR)
+    oscd.map('/woG', setwoG)
+    oscd.map('/woB', setwoB)
+    osca=(bind_ip, bind_port)
+    osc=pythonosc.osc_server.ThreadingOSCUDPServer(osca, oscd)
+    osct=threading.Thread(target=osc.serve_forever)
     osct.start()
     return osc,osct
 
@@ -675,8 +676,8 @@ def setup_osc_client():
     ##from txosc import osc, sync
     ##client=sync.UdpSender("hostip", 10233)
     import socket
-    client = OSC.OSCClient()
-    client.connect((socket.gethostbyname(remote_osc_server), remote_osc_port))
+    clienta = (socket.gethostbyname(remote_osc_server), remote_osc_port)
+    client = pythonosc.upd_client.UDPClient(clienta)
     return client
 
 def freq_to_band(freq):
@@ -721,23 +722,19 @@ def playerbin_message(bus,message):
                 setG('NULL','NULL',[mid_adj],'NULL')
                 setB('NULL','NULL',[high_adj],'NULL')
             else:
-                b = OSC.OSCBundle()
-                osc_message=OSC.OSCMessage()
-                osc_message.setAddress("/R")
-                osc_message.append(int(low_adj))
-                #client.send(osc_message)
-                b.append(osc_message)
-                osc_message=OSC.OSCMessage()
-                osc_message.setAddress("/G")
-                osc_message.append(int(mid_adj))
-                #client.send(osc_message)
-                b.append(osc_message)
-                osc_message=OSC.OSCMessage()
-                osc_message.setAddress("/B")
-                osc_message.append(int(high_adj))
-                #client.send(osc_message)
-                b.append(osc_message)
-                client.send(b)
+                bb = pythonosc.osc_bundle_builder.OscBundleBuilder()
+                mb = pythonosc.osc_message_builder.OscMessageBuilder(address="/R")
+                mb.add_argf(int(low_adj))
+                bb.add_contnt(mb.build())
+                bb = pythonosc.osc_bundle_builder.OscBundleBuilder()
+                mb = pythonosc.osc_message_builder.OscMessageBuilder(address="/G")
+                mb.add_argf(int(mid_adj))
+                bb.add_contnt(mb.build())
+                bb = pythonosc.osc_bundle_builder.OscBundleBuilder()
+                mb = pythonosc.osc_message_builder.OscMessageBuilder(address="/B")
+                mb.add_argf(int(high_adj))
+                bb.add_contnt(mb.build())
+                client.send(bb.build())
     #            client.send(OSC.OSCMessage("/R"+[int(low_adj)]))
     #            client.send(OSC.OSCMessage("/G"+[int(mid_adj)]))
     #            client.send(OSC.OSCMessage("/B"+[int(high_adj)]))
