@@ -45,6 +45,7 @@ struct timespec thirdsec_time={0}, zero_time={0};
 #define def_ret 17
 // DI (with the white line)  connects to pin 11 (or 51 if you have a Mega)
 // CI connects to pin 13 (or 52 if you have a Mega)
+#define def_spispd 8000000
 
 #define def_pwr 12 // pin for controlling the power supply
 uint8_t inst; //incoming instruction value
@@ -159,7 +160,7 @@ int main(int argc, char *argv[]) {
   spifd=open("/dev/spidev0.0",O_RDWR);
   ioctl(spifd,SPI_IOC_WR_MODE,SPI_MODE_0);
   ioctl(spifd,SPI_IOC_WR_BITS_PER_WORD,8);
-  ioctl(spifd,SPI_IOC_WR_MAX_SPEED_HZ,12000000);
+  ioctl(spifd,SPI_IOC_WR_MAX_SPEED_HZ,def_spispd);
   lShow=millis();
   //Make some arrays so we can free them during setup
   arrRc1=(arr8c1 *)malloc(0);
@@ -747,6 +748,8 @@ void dis(){
       spi_buf[(slen/32+2)+i*3]=readarrP(i, 2) | 0x80;
       spi_buf[(slen/32+2)+i*3+1]=readarrP(i, 0) | 0x80;
       spi_buf[(slen/32+2)+i*3+2]=readarrP(i, 1) | 0x80;
+//      printf("\n%u %u %u\n",readarrP(i, 1),readarrP(i, 0),readarrP(i, 2));
+//      printf("%u %u %u\n\n",spi_buf[i*3],spi_buf[i*3+1],spi_buf[i*3+2]);
     }
   }
 //  for (uint16_t i=0; i <=num_reset_bits; i++){
@@ -782,12 +785,14 @@ void spi_send(arr8c1 *spi_msg, size_t *spi_msg_len)
     struct spi_ioc_transfer tr={
       .tx_buf=(unsigned long)(spi_msg+i*bytes_at_once),
       .len=bytes_at_once,
+      .speed_hz=def_spispd,
     };
     ioctl(spifd,SPI_IOC_MESSAGE(1),&tr);
   }
   struct spi_ioc_transfer tr={
     .tx_buf=(unsigned long)(spi_msg+full_buffers*bytes_at_once),
     .len=last_buffer_len,
+    .speed_hz=def_spispd,
   };
   ioctl(spifd,SPI_IOC_MESSAGE(1),&tr);
 }
