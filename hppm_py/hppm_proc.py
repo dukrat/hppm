@@ -107,9 +107,12 @@ if use_gstreamer:
     low_db_adj=config.getfloat("hppm_proc.py", "low_db_adj")
     mid_db_adj=config.getfloat("hppm_proc.py", "mid_db_adj")
     high_db_adj=config.getfloat("hppm_proc.py", "high_db_adj")
-    low_led_curv=config.getfloat("hppm_proc.py", "low_led_curv")
-    mid_led_curv=config.getfloat("hppm_proc.py", "mid_led_curv")
-    high_led_curv=config.getfloat("hppm_proc.py", "high_led_curv")
+    low_led_log_shift=config.getfloat("hppm_proc.py", "low_led_log_shift")
+    mid_led_log_shift=config.getfloat("hppm_proc.py", "mid_led_log_shift")
+    high_led_log_shift=config.getfloat("hppm_proc.py", "high_led_log_shift")
+    low_led_log_stretch=config.getfloat("hppm_proc.py", "low_led_log_stretch")
+    mid_led_log_stretch=config.getfloat("hppm_proc.py", "mid_led_log_stretch")
+    high_led_log_stretch=config.getfloat("hppm_proc.py", "high_led_log_stretch")
     low_led_adj=config.getint("hppm_proc.py", "low_led_adj")
     mid_led_adj=config.getint("hppm_proc.py", "mid_led_adj")
     high_led_adj=config.getint("hppm_proc.py", "high_led_adj")
@@ -133,10 +136,10 @@ if use_gstreamer:
 
 if sType=="LPD8806":
     sNum=0
-    maxBright=127
+    maxBright=255
 elif sType=="LPD8806v2":
     sNum=4
-    maxBright=127
+    maxBright=255
 elif sType=="WS2801":
     sNum=2
     maxBright=255
@@ -692,6 +695,8 @@ def playerbin_message(bus,message):
         if struct.get_name() == 'spectrum':
             matches = re.search(r'magnitude=\(float\){([^}]+)}', struct.to_string())
             m = [float(x) for x in matches.group(1).split(',')]
+#            for mute_freq in range(35,37):
+#                m[freq_to_band(mute_freq)] = -60.
             low  = max(m[freq_to_band(min_low_freq):freq_to_band(max_low_freq)])
             mid  = max(m[freq_to_band(min_mid_freq):freq_to_band(max_mid_freq)])
             high = max(m[freq_to_band(min_high_freq):freq_to_band(max_high_freq)])
@@ -699,15 +704,20 @@ def playerbin_message(bus,message):
             low_lin=10**((low+low_db_adj)/20.)
             mid_lin=10**((mid+mid_db_adj)/20.)
             high_lin=10**((high+high_db_adj)/20.)
-            low_adj=((low_lin**float(low_led_curv))*float(maxBright))+float(low_led_adj)
-            mid_adj=((mid_lin**float(mid_led_curv))*float(maxBright))+float(mid_led_adj)
-            high_adj=((high_lin**float(high_led_curv))*float(maxBright))+float(high_led_adj)
+            low_adj=(1./(1.+2.71828**((-low_lin+float(low_led_log_shift))*float(low_led_log_stretch))))*float(maxBright)+float(low_led_adj)
+            mid_adj=(1./(1.+2.71828**((-mid_lin+float(mid_led_log_shift))*float(mid_led_log_stretch))))*float(maxBright)+float(mid_led_adj)
+            high_adj=(1./(1.+2.71828**((-high_lin+float(high_led_log_shift))*float(high_led_log_stretch))))*float(maxBright)+float(high_led_adj)
+#            low_adj=((low_lin**float(low_led_curv))*float(maxBright))+float(low_led_adj)
+#            mid_adj=((mid_lin**float(mid_led_curv))*float(maxBright))+float(mid_led_adj)
+#            high_adj=((high_lin**float(high_led_curv))*float(maxBright))+float(high_led_adj)
 
-#            print "%03.1f %03.1f %03.1f %-30s %-30s %30s" % (low_adj, mid_adj, high_adj,
+#            print("raw: %03.1f %03.1f %03.1f lin: %03.3f %03.3f %03.3f adj: %03.1f %03.1f %03.1f" % (low, mid, high, low_lin, mid_lin, high_lin, low_adj, mid_adj, high_adj))
+
+#            print("%03.1f %03.1f %03.1f %-30s %-30s %30s" % (low_adj, mid_adj, high_adj,
 #                                                            "x"*int(low_adj/10),
 #                                                            " "*int((30-(mid_adj/10))/2)+"x"*int(mid_adj/10),
 #                                                            "x"*int(high_adj/10),
-#                                                            )
+#                                                            ))
 
 ######              sendOSC(osc.Message("/R", int(low_adj)))
 ######              sendOSC(osc.Message("/G", int(mid_adj)))
