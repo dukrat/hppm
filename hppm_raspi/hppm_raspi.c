@@ -12,7 +12,6 @@
 #include <sys/time.h>
 #include <stdio.h>
 #include <poll.h>
-#include <math.h>
 #include "cie1931.h"
 void procInst();
 void colorwaveR(uint8_t r, uint8_t g, uint16_t b, uint8_t p);

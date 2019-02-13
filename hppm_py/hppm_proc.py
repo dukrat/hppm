@@ -128,7 +128,7 @@ if use_gstreamer:
         sound_framework='autosoundsrc'
     else:
         if sys.platform.startswith('win32'):
-            sound_framework='directsoundsrc device-name="'+aud_dev_name[0:31]+'" latency-time=1000 buffer-time=1001'
+            sound_framework='directsoundsrc device="'+aud_dev_name+'" latency-time=1000 buffer-time=1001'
         elif sys.platform.startswith('darwin'):
             sound_framework='osxaudiosrc device="'+aud_dev_name+'"'
         else:
