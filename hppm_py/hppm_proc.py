@@ -98,11 +98,11 @@ if use_gstreamer:
         import pythonosc.udp_client, pythonosc.osc_bundle_builder, pythonosc.osc_message_builder, pythonosc.dispatcher, pythonosc.osc_server
     import gi, re
     gi.require_version('Gst', '1.0')
-    from gi.repository import GObject, Gst
+    from gi.repository import Gst, GLib
     Gst.init(None)
-    aud_sample_rate=config.getint("hppm_proc.py", "aud_sample_rate")
-    aud_chans=config.getint("hppm_proc.py", "aud_chans")
-    aud_depth=config.getint("hppm_proc.py", "aud_depth")
+    aud_sample_rate=44000
+    aud_chans=2
+    aud_depth=8
     spectrum_bands=1024
     low_db_adj=config.getfloat("hppm_proc.py", "low_db_adj")
     mid_db_adj=config.getfloat("hppm_proc.py", "mid_db_adj")
@@ -128,7 +128,7 @@ if use_gstreamer:
         sound_framework='autosoundsrc'
     else:
         if sys.platform.startswith('win32'):
-            sound_framework='directsoundsrc device="'+aud_dev_name+'" latency-time=1000 buffer-time=1001'
+            sound_framework='wasapisrc device="'+aud_dev_name+'" low-latency=true use-audioclient3=true'
         elif sys.platform.startswith('darwin'):
             sound_framework='osxaudiosrc device="'+aud_dev_name+'"'
         else:
@@ -619,7 +619,7 @@ def sendSCH(r,g,b,port,tcp_sock):
 
 def write(i,p,r,g,b,port,tcp_sock_local):
     global lW
-    time_waited=time.clock()-lW
+    time_waited=time.monotonic()-lW
     if outr and time_waited<(1./outr):
         time.sleep((1./outr)-time_waited)
     b_arr=struct.pack("!BHBBB",i,p,r,g,b)
@@ -640,7 +640,7 @@ def write(i,p,r,g,b,port,tcp_sock_local):
             while True:
                 incm_b=port.read(1)
                 if incm_b==struct.pack("!B",def_ret):
-    #DEBUG                          print "waiting:"+str(port.inWaiting())
+    #DEBUG                          print("waiting:"+str(port.inWaiting()))
                     port.write(bytearray(k))
                     break
     #                    else:
@@ -648,7 +648,7 @@ def write(i,p,r,g,b,port,tcp_sock_local):
     #                        print 1./(time.clock()-lW)
     #DEBUG                  port.write(bytearray(struct.pack("!BHBBB",i,p,r,g,b)))
     #           print 1./(time.clock()-lW)
-    lW=time.clock()
+    lW=time.monotonic()
 
 #this sends a solid color by addressing each light, it is slow
 #I include it only for testing purposes
@@ -690,6 +690,11 @@ def freq_to_band(freq):
    #return int(float(freq)/(aud_sample_rate/spectrum_bands))+1
 
 def playerbin_message(bus,message):
+#    print(message.type)
+#    if message.type == Gst.MessageType.STATE_CHANGED:
+#        print(message.parse_state_changed())
+#    if message.type == Gst.MessageType.STREAM_STATUS:
+#        print(message.parse_stream_status())
     if message.type == Gst.MessageType.ELEMENT:
         struct = message.get_structure()
         if struct.get_name() == 'spectrum':
@@ -751,26 +756,12 @@ def playerbin_message(bus,message):
     return True
 
 def start_gst():
-    #pipeline = Gst.parse_launch(
-    #  'pulsesrc device="alsa_output.pci-0000_00_1b.0.analog-surround-50.monitor" ! spectrum interval=16666667 ! fakesink')
-    ##pipeline = Gst.parse_launch('directsoundsrc device-name="Line In (Realtek High Definition Audio)" latency-time=1000 buffer-time=8000 ! \
-    ##                              spectrum interval=16666667 ! tee name=t \
-    ##                              t. ! queue ! udpsink blocksize=512 host= \
-    ##                              t. ! queue ! udpsink blocksize=512 host=')
-    #pipeline = Gst.parse_launch('directsoundsrc device-name="Line In (Realtek High Definition Audio)" latency-time=1000 buffer-time=2000 ! \
-    #                            spectrum interval=33333333 ! tee name=t \
-    #                            t. ! queue ! udpsink blocksize=512 host= \
-    #                            t. ! queue ! udpsink blocksize=512 host=')
-    #pipeline = Gst.parse_launch('directsoundsrc device-name="Microphone (GN 9350)" ! spectrum interval=16666667 ! directsoundsink')
+    pipelinetxt = (sound_framework+' ! audioconvert ! audioresample ! '+
+                   'audio/x-raw,rate='+str(aud_sample_rate)+',channels='+str(aud_chans)+',depth='+str(aud_depth)+' ! '+
+                   'spectrum interval='+str(sample_interval)+' bands='+str(spectrum_bands)+' ! '+
+                   'fakesink')
 
-    pipeline = Gst.parse_launch(sound_framework+' ! \
-                                audio/x-raw,rate='+str(aud_sample_rate)+',channels='+str(aud_chans)+',depth='+str(aud_depth)+' ! \
-                                spectrum interval='+str(sample_interval)+' bands='+str(spectrum_bands)+' ! fakesink')
-
-
-#    pipeline = Gst.parse_launch(sound_framework+' device-name="'+device_name+'" latency-time=1000 buffer-time=1001 ! \
-#                                spectrum interval='+str(sample_interval)+' ! fakesink')
-
+    pipeline = Gst.parse_launch(pipelinetxt)
     bus = pipeline.get_bus()
     #bus.add_signal_watch()
     #bus.connect('message', playerbin_message)
@@ -782,7 +773,7 @@ def start_gst():
 if use_gstreamer:
     main_thread=threading.Thread(target=main)
     main_thread.start()
-    gi_thread=GObject.MainLoop()
+    gi_thread=GLib.MainLoop()
     gi_thread.run()
 else:
     main()
