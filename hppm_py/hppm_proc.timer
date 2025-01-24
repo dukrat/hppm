@@ -1,0 +1,9 @@
+[Unit]
+Description=Delay start of hppm_proc.service
+
+[Timer]
+OnBootSec=1min
+Unit=hppm_proc.service
+
+[Install]
+WantedBy=multi-user.target
