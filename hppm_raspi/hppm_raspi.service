@@ -1,0 +1,12 @@
+[Unit]
+Description=hppm_raspi
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/hppm/hppm_raspi
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
