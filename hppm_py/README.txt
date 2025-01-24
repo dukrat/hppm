@@ -16,3 +16,6 @@ pyOSC
 
 Optional:
 psyco
+
+Raspbian (Debian 12)
+sudo apt install -y python3-gst-1.0 python3-serial gstreamer1.0-alsa gstreamer1.0-plugins-good
