@@ -155,26 +155,41 @@ if psyon:
     except ImportError:
         psyon=0
         pass
+#use_nagios=config.getint("hppm_proc.py", "use_nagios")
+use_nagios=True
+if use_nagios:
+    # initialize some mutables
+    data_lst = []
+    rCount = [0]
+    bCount = [0]
+    gCount = [0]
+    offset = [0]
+    lastFrame = [None] * numLights
+    # get ready to make the request to nagios
+    status_url = config.get("hppm_proc.py", "nagios_status_uri")
+    auth_obj=HTTPBasicAuth(config.get("hppm_proc.py","nagios_user"),
+                            config.get("hppm_proc.py","nagios_pass"))
+    timeout = 10.0
+    hl_params = {'query': 'hostlist', 'details': 'true', 'hoststatus': 'up' +
+                 ' down unreachable pending'}
+    sl_params = {'query': 'servicelist', 'details': 'true', 'hoststatus':
+                 'up down unreachable pending', 'servicestatus': 'ok warning' +
+                 ' critical unknown pending'}
 tcp_sock='NULL'
-quit_list=[]
-
+quit_list={}
 
 class SignalExit:
     exit_v = False
-
 
     def __init__(self):
         signal.signal(signal.SIGINT, self.signal_handler)
         signal.signal(signal.SIGTERM, self.signal_handler)
 
-
     def signal_handler(self, signum, frame):
        print(time.strftime('[%H:%M:%S]') + ' Requested exit.')
        self.exit_v = True
 
-
 sigExit = SignalExit()
-
 
 def initBP(port): #Test if BP is already online, may get out of some modes TBR
     port.write('##') #test string
@@ -248,45 +263,95 @@ def start_tcp(tcp_server, tcp_port):
 #            gi_thread.quit()
 #        print time.strftime('[%H:%M:%S]')+' Program exited.'
 #        exit()
-    
 
 def main():
     print(time.strftime('[%H:%M:%S]')+' Program started.')
     global tcp_sock,quit_list
     if use_tcp:
         tcp_sock=start_tcp(config.get("hppm_proc.py", "tcp_server"),config.getint("hppm_proc.py", "tcp_port"))
-    quit_list.append(tcp_sock)
+        quit_list['tcp_sock']=tcp_sock
     if use_gstreamer:
         pipeline,bus=start_gst()
-        quit_list.append(pipeline)
-        quit_list.append(bus)
+        quit_list['pipeline']=pipeline
+        quit_list['bus']=bus
         if not use_local:
             global client
             client=setup_osc_client()
-            quit_list.append(client)
-        else:
-            quit_list.append('NULL')
-    else:
-        quit_list.append('NULL')
-        quit_list.append('NULL')
-        quit_list.append('NULL')
+            quit_list['client']=client
+    port='NULL'
+    if use_nagios:
+        data_i = Thread(target=getNagData, args=(hl_params,
+            auth_obj, sl_params, status_url, timeout, data_lst,
+            rCount, bCount, gCount))
+        print(time.strftime('[%H:%M:%S]') + ' Getting inital data...')
+        data_i.start()
+        data_i.join()
+        # copy the first set of data to be thread safe
+        lastdata_lst = copy(data_lst)
+        lastrCount = copy(rCount)
+        lastbCount = copy(bCount)
+        lastgCount = copy(gCount)
+        # clean up
+        global data_lst, rCount, bCount, gCount
+        data_lst = []
+        rCount = [0]
+        bCount = [0]
+        gCount = [0]
+        quiet_sets=0
+        flash(r)
+        print(time.strftime('[%H:%M:%S]') + ' Here we go.')
+        data_t = Timer(60.0, getNagData, args=(hl_params,
+            auth_obj, sl_params, status_url, timeout,
+            data_lst, rCount, bCount, gCount))
+        data_t.start()
     if use_ard_int:
         port=start_ard()
-        quit_list.append(port)
-    else:
-        port='NULL'
-        quit_list.append('NULL')
+        quit_list['port']=port
     if use_ard_int or use_tcp:
         write(su,numLights-1,fps,chngBProp+sNum,0,port,tcp_sock)
         if use_osc_server:
             osc,osct=start_osc_server()
-            quit_list.append(osc)
-            quit_list.append(osct)
-        else:
-            quit_list.append('NULL')
-            quit_list.append('NULL')
+            quit_list['osc']=osc
+            quit_list['osct']=osct
         while True:
             avg()
+#conf time before nagios
+            if nwR==0 and nwG==0 and nwB==0:
+                quiet_sets=quiet_sets+1
+            else:
+                quiet_sets=0
+            if quiet_sets > 60 * 15:
+                data_t.join(0)
+                if data_t.isAlive() is not True:
+                    # the timer joined
+                    # let us know if there are new issues or resolutions
+                    if bCount[0] > lastbCount[0]:
+                        flash(b)
+                    elif gCount[0] > lastgCount[0]:
+                        flash(g)
+                    elif rCount[0] > lastrCount[0]:
+                        flash(r)
+                    # copy the data to be thread safe
+                    lastdata_lst = copy(data_lst)
+                    lastrCount = copy(rCount)
+                    lastbCount = copy(bCount)
+                    lastgCount = copy(gCount)
+                    # clean up
+                    data_lst = []
+                    rCount = [0]
+                    bCount = [0]
+                    gCount = [0]
+                    # and set the timer to run again
+                    data_t = Timer(60.0, getNagData,
+                                args=(hl_params, auth_obj,
+                                sl_params, status_url, timeout, ccache_file,
+                                data_lst, rCount, bCount, gCount))
+                    data_t.start()
+                # display the data
+                pushFrame(offset, tcp_sock, lastFrame, lastdata_lst, lastrCount,
+                            lastbCount, lastgCount)
+                # sleep to control the scroll rate
+                time.sleep(.2)
             if mG==1:
                 testG(port,tcp_sock)
             elif mG==2:
@@ -316,8 +381,6 @@ def main():
             if sigExit.exit_v:
                 quit_program(quit_list)
     else:
-        quit_list.append('NULL')
-        quit_list.append('NULL')
         while True:
             if psyon:
                 time.sleep(0) #needed for psyco
@@ -325,29 +388,32 @@ def main():
                 quit_program(quit_list)
 
 def quit_program(quit_list):
-    (tcp_sock,pipeline,bus,client,port,osc,osct) = quit_list
     print(time.strftime('[%H:%M:%S]')+' Exiting...')
-    if use_gstreamer:
-        pipeline.set_state(Gst.State.NULL)
-        bus.remove_watch()
-        if not use_local:
-            client.close()
+    if 'pipeline' in quit_list:
+        quit_list['pipeline'].set_state(Gst.State.NULL)
+        quit_list['bus'].remove_watch()
+        if 'client' in quit_list:
+            quit_list['client'].close()
         gi_thread.quit()
+    if 'nagios' in quit_list:
+        quit_list['nagios'].cancel()
+        if quit_list['nagios'].isAlive():
+            quit_list['nagios'].join()
+    if 'osc' in quit_list:
+        quit_list['osc'].close()
+        quit_list['osct'].join()
     if use_ard_int or use_tcp:
-        if use_osc_server:
-            osc.close()
-            osct.join()
 #we send these twice, as the first isn't always proc'd
         if lightOn==0:
-            sendSCH(0,0,0,port,tcp_sock)
-            sendSCH(0,0,0,port,tcp_sock)
+            sendSCH(0,0,0,quit_list['port'],quit_list['tcp_sock'])
+            sendSCH(0,0,0,quit_list['port'],quit_list['tcp_sock'])
         else:
-            sendSCH(maxBright,maxBright,maxBright,port,tcp_sock)
-            sendSCH(maxBright,maxBright,maxBright,port,tcp_sock)
-        if use_ard_int:
-            port.close()
-        if tcp_sock!='NULL':
-            tcp_sock.close()
+            sendSCH(maxBright,maxBright,maxBright,quit_list['port'],quit_list['tcp_sock'])
+            sendSCH(maxBright,maxBright,maxBright,quit_list['port'],quit_list['tcp_sock'])
+    if 'port' in quit_list:
+        quit_list['port'].close()
+    if 'tcp_sock' in quit_list:
+            quit_list['tcp_sock'].close()
     print(time.strftime('[%H:%M:%S]')+' Program exited.')
     exit()
 
@@ -411,7 +477,7 @@ def testsB(port,tcp_sock):
 
 def rwalkR(port,tcp_sock):
     sendT("R",random.randint(minrwR, maxrwR),port,tcp_sock)
-    
+
 def rwalkG(port,tcp_sock):
     sendT("G",random.randint(minrwG, maxrwG),port,tcp_sock)
 
@@ -528,7 +594,7 @@ def setwsB(unused_addr, nwsB):
     global wsB
     wsB=nwsB
     print(time.strftime('[%H:%M:%S]')+' Blue wave delay: '+str(1/wsB)+'ms betweenjumps .')
-    
+
 def setwoR(unused_addr, nwoR):
     global woR
     woR=nwoR
@@ -634,7 +700,7 @@ def write(i,p,r,g,b,port,tcp_sock_local):
             tcp_sock=start_tcp(config.get("hppm_proc.py", "tcp_server"),config.getint("hppm_proc.py", "tcp_port"))
             if tcp_sock!='NULL':
                 print(time.strftime('[%H:%M:%S]')+' TCP reconnected.')
-            quit_list[0]=tcp_sock
+            quit_list['tcp_sock']=tcp_sock
     if use_ard_int:
         for k in b_arr:
             while True:
@@ -649,6 +715,122 @@ def write(i,p,r,g,b,port,tcp_sock_local):
     #DEBUG                  port.write(bytearray(struct.pack("!BHBBB",i,p,r,g,b)))
     #           print 1./(time.clock()-lW)
     lW=time.monotonic()
+
+def flash(color, e=None):
+    for i in xrange(0, 3):
+        if color == r:
+            write(pA, 0, rBrightR, rBrightG, rBrightB, tcp_sock)
+        elif color == b:
+            write(pA, 0, bBrightR, bBrightG, bBrightB, tcp_sock)
+        elif color == g:
+            write(pA, 0, gBrightR, gBrightG, gBrightB, tcp_sock)
+        time.sleep(.5)
+        write(pA, 0, 0, 0, 0, tcp_sock)
+        time.sleep(.2)
+    if e is not None:
+        print(e)
+        #exit(1)
+
+def initccache(ccache, princ, keytab):
+    ccache.init(princ)
+    ccache.init_creds_keytab(keytab=keytab, principal=princ)
+
+def getNagData(hl_params, auth_obj, sl_params, status_url, timeout, data_lst,
+             rCount, bCount, gCount):
+    try:
+        # pull the hoststatus json
+        hl = requests.get(status_url, params=hl_params, verify=False,
+                          auth=auth_obj, timeout=timeout).json()
+        # pull the servicestatus json
+        sl = requests.get(status_url, params=sl_params, verify=False,
+                          auth=auth_obj, timeout=timeout).json()
+        for h in sorted(hl['data']['hostlist']):
+            if (hl['data']['hostlist'][h]['status'] == 2 or
+                hl['data']['hostlist'][h]['problem_has_been_acknowledged']
+                is True):
+                data_lst.append(r)
+                rCount[0] = rCount[0] + 1
+            else:
+                data_lst.append(b)
+                bCount[0] = bCount[0] + 1
+            if h in sl['data']['servicelist']:
+                for s in sorted(sl['data']['servicelist'][h]):
+                    if (sl['data']['servicelist'][h][s]['status'] == 2 or
+                            sl['data']['servicelist'][h][s]
+                            ['problem_has_been_acknowledged'] is True):
+                        data_lst.append(r)
+                        rCount[0] = rCount[0] + 1
+                    elif sl['data']['servicelist'][h][s]['status'] == 4:
+                        data_lst.append(g)
+                        gCount[0] = gCount[0] + 1
+                    else:
+                        data_lst.append(b)
+                        bCount[0] = bCount[0] + 1
+        data_lst.extend([0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    except Exception as e:
+        flash(g, e)
+
+def getNagDataWithKrb(ccache, princ, keytab, hl_params, auth_obj, sl_params,
+                   status_url, timeout, ccache_file, data_lst, rCount,
+                   bCount, gCount):
+    # init ticket
+    initccache(ccache, princ, keytab)
+    getNagData(hl_params, auth_obj, sl_params, status_url, timeout, data_lst,
+             rCount, bCount, gCount)
+    # remove the ccache
+    os.remove(ccache_file)
+
+def pushNagFrame(offset, tcp_sock, lastFrame, data_lst, rCount, bCount, gCount):
+    if rCount[0] > numLights / 2:
+        write(pAns, 0, rBrightR, rBrightG, rBrightB, tcp_sock)
+        newFrame = [r] * numLights
+    elif bCount[0] > numLights / 2:
+        write(pAns, 0, bBrightR, bBrightG, bBrightB, tcp_sock)
+        newFrame = [b] * numLights
+    elif gCount[0] > numLights / 2:
+        write(pAns, 0, gBrightR, gBrightG, gBrightB, tcp_sock)
+        newFrame = [g] * numLights
+    elif rCount[0] == 0 and bCount[0] == 0 and gCount[0] == 0:
+        flash(g, time.strftime('[%H:%M:%S]') + ' No data available.')
+        time.sleep(120.0)
+        return
+    else:
+        newFrame = lastFrame
+    data_lst_local = copy(data_lst)
+    while len(data_lst_local) < numLights:
+        data_lst_local = data_lst_local+data_lst_local
+    lenData_lst = len(data_lst_local)
+    data_lst_local = data_lst_local+data_lst_local
+    for ledIndex, d in enumerate(data_lst_local[offset[0]:
+                                 offset[0]+numLightsM2]):
+        if d != newFrame[ledIndex]:
+            if d == r:
+                write(nsns, ledIndex, rBrightR, rBrightG, rBrightB, tcp_sock)
+                newFrame[ledIndex] = r
+            elif d == b:
+                write(nsns, ledIndex, bBrightR, bBrightG, bBrightB, tcp_sock)
+                newFrame[ledIndex] = b
+            elif d == g:
+                write(nsns, ledIndex, gBrightR, gBrightG, gBrightB, tcp_sock)
+                newFrame[ledIndex] = g
+            elif d == 0:
+                write(nsns, ledIndex, 0, 0, 0, tcp_sock)
+                newFrame[ledIndex] = 0
+    d = data_lst_local[numLightsM1]
+    if d == r:
+        write(ns, numLightsM1, rBrightR, rBrightG, rBrightB, tcp_sock)
+        newFrame[numLightsM1] = r
+    elif d == b:
+        write(ns, numLightsM1, bBrightR, bBrightG, bBrightB, tcp_sock)
+        newFrame[numLightsM1] = b
+    elif d == g:
+        write(ns, numLightsM1, gBrightR, gBrightG, gBrightB, tcp_sock)
+        newFrame[numLightsM1] = g
+    elif d == 0:
+        write(ns, numLightsM1, 0, 0, 0, tcp_sock)
+        newFrame[numLightsM1] = 0
+    offset[0] = (offset[0] + 1) % lenData_lst
+    lastFrame = newFrame
 
 #this sends a solid color by addressing each light, it is slow
 #I include it only for testing purposes
