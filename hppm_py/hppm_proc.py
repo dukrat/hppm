@@ -155,19 +155,13 @@ if psyon:
     except ImportError:
         psyon=0
         pass
-#use_nagios=config.getint("hppm_proc.py", "use_nagios")
-use_nagios=True
+use_nagios=config.getint("hppm_proc.py", "use_nagios")
 if use_nagios:
-    # initialize some mutables
-    data_lst = []
-    rCount = [0]
-    bCount = [0]
-    gCount = [0]
-    offset = [0]
-    lastFrame = [None] * numLights
+    import requests
+    from copy import copy
     # get ready to make the request to nagios
     status_url = config.get("hppm_proc.py", "nagios_status_uri")
-    auth_obj=HTTPBasicAuth(config.get("hppm_proc.py","nagios_user"),
+    auth_obj=requests.auth.HTTPBasicAuth(config.get("hppm_proc.py","nagios_user"),
                             config.get("hppm_proc.py","nagios_pass"))
     timeout = 10.0
     hl_params = {'query': 'hostlist', 'details': 'true', 'hoststatus': 'up' +
@@ -175,6 +169,17 @@ if use_nagios:
     sl_params = {'query': 'servicelist', 'details': 'true', 'hoststatus':
                  'up down unreachable pending', 'servicestatus': 'ok warning' +
                  ' critical unknown pending'}
+# nagios conf colors
+    # these control the colors
+    rBrightR = 50
+    rBrightG = 0
+    rBrightB = 0
+    bBrightR = 0
+    bBrightG = 0
+    bBrightB = 50
+    gBrightR = 0
+    gBrightG = 50
+    gBrightB = 0
 tcp_sock='NULL'
 quit_list={}
 
@@ -259,10 +264,6 @@ def start_tcp(tcp_server, tcp_port):
         print(time.strftime('[%H:%M:%S]')+' Could not connect to TCP Server.')
         s.close()
         return 'NULL'
-#        if use_gstreamer:
-#            gi_thread.quit()
-#        print time.strftime('[%H:%M:%S]')+' Program exited.'
-#        exit()
 
 def main():
     print(time.strftime('[%H:%M:%S]')+' Program started.')
@@ -279,103 +280,45 @@ def main():
             client=setup_osc_client()
             quit_list['client']=client
     port='NULL'
-    if use_nagios:
-        data_i = Thread(target=getNagData, args=(hl_params,
-            auth_obj, sl_params, status_url, timeout, data_lst,
-            rCount, bCount, gCount))
-        print(time.strftime('[%H:%M:%S]') + ' Getting inital data...')
-        data_i.start()
-        data_i.join()
-        # copy the first set of data to be thread safe
-        lastdata_lst = copy(data_lst)
-        lastrCount = copy(rCount)
-        lastbCount = copy(bCount)
-        lastgCount = copy(gCount)
-        # clean up
-        global data_lst, rCount, bCount, gCount
-        data_lst = []
-        rCount = [0]
-        bCount = [0]
-        gCount = [0]
-        quiet_sets=0
-        flash(r)
-        print(time.strftime('[%H:%M:%S]') + ' Here we go.')
-        data_t = Timer(60.0, getNagData, args=(hl_params,
-            auth_obj, sl_params, status_url, timeout,
-            data_lst, rCount, bCount, gCount))
-        data_t.start()
     if use_ard_int:
         port=start_ard()
-        quit_list['port']=port
+    quit_list['port']=port
     if use_ard_int or use_tcp:
         write(su,numLights-1,fps,chngBProp+sNum,0,port,tcp_sock)
         if use_osc_server:
             osc,osct=start_osc_server()
             quit_list['osc']=osc
             quit_list['osct']=osct
+        if use_nagios:
+            data_lst = []
+            rCount = [0]
+            bCount = [0]
+            gCount = [0]
+            offset = [0]
+            lastdata_lst = []
+            lastrCount = [0]
+            lastbCount = [0]
+            lastgCount = [0]
+            lastFrame = [None] * numLights
+            quiet_sets=0
+            data_t=nagios_setup(data_lst, rCount, bCount, gCount, port,
+                                lastdata_lst, lastrCount, lastbCount, lastgCount)
         while True:
             avg()
+            if use_nagios:
+                if nwR < 9 and nwG < 4 and nwB < 4:
+                    quiet_sets=quiet_sets+1
+                else:
+                    quiet_sets=0
 #conf time before nagios
-            if nwR==0 and nwG==0 and nwB==0:
-                quiet_sets=quiet_sets+1
+                if quiet_sets > 60 * 15:
+                    nagios_sends(data_t,data_lst, rCount, bCount, gCount, port,
+                         lastdata_lst, lastrCount, lastbCount, lastgCount)
+                    time.sleep(.2)
+                else:
+                    main_sends(port)
             else:
-                quiet_sets=0
-            if quiet_sets > 60 * 15:
-                data_t.join(0)
-                if data_t.isAlive() is not True:
-                    # the timer joined
-                    # let us know if there are new issues or resolutions
-                    if bCount[0] > lastbCount[0]:
-                        flash(b)
-                    elif gCount[0] > lastgCount[0]:
-                        flash(g)
-                    elif rCount[0] > lastrCount[0]:
-                        flash(r)
-                    # copy the data to be thread safe
-                    lastdata_lst = copy(data_lst)
-                    lastrCount = copy(rCount)
-                    lastbCount = copy(bCount)
-                    lastgCount = copy(gCount)
-                    # clean up
-                    data_lst = []
-                    rCount = [0]
-                    bCount = [0]
-                    gCount = [0]
-                    # and set the timer to run again
-                    data_t = Timer(60.0, getNagData,
-                                args=(hl_params, auth_obj,
-                                sl_params, status_url, timeout, ccache_file,
-                                data_lst, rCount, bCount, gCount))
-                    data_t.start()
-                # display the data
-                pushFrame(offset, tcp_sock, lastFrame, lastdata_lst, lastrCount,
-                            lastbCount, lastgCount)
-                # sleep to control the scroll rate
-                time.sleep(.2)
-            if mG==1:
-                testG(port,tcp_sock)
-            elif mG==2:
-                testsG(port,tcp_sock)
-            elif mG==3:
-                rwalkG(port,tcp_sock)
-            else:
-                colorG(port,tcp_sock)
-            if mR==1:
-                testR(port,tcp_sock)
-            elif mR==2:
-                testsR(port,tcp_sock)
-            elif mR==3:
-                rwalkR(port,tcp_sock)
-            else:
-                colorR(port,tcp_sock)
-            if mB==1:
-                testB(port,tcp_sock)
-            elif mB==2:
-                testsB(port,tcp_sock)
-            elif mB==3:
-                rwalkB(port,tcp_sock)
-            else:
-                colorB(port,tcp_sock)
+                main_sends(port)
             if psyon:
                 time.sleep(0) #needed for psyco
             if sigExit.exit_v:
@@ -386,6 +329,90 @@ def main():
                 time.sleep(0) #needed for psyco
             if sigExit.exit_v:
                 quit_program(quit_list)
+
+def main_sends(port):
+    if mG==1:
+        testG(port,tcp_sock)
+    elif mG==2:
+        testsG(port,tcp_sock)
+    elif mG==3:
+        rwalkG(port,tcp_sock)
+    else:
+        colorG(port,tcp_sock)
+    if mR==1:
+        testR(port,tcp_sock)
+    elif mR==2:
+        testsR(port,tcp_sock)
+    elif mR==3:
+        rwalkR(port,tcp_sock)
+    else:
+        colorR(port,tcp_sock)
+    if mB==1:
+        testB(port,tcp_sock)
+    elif mB==2:
+        testsB(port,tcp_sock)
+    elif mB==3:
+        rwalkB(port,tcp_sock)
+    else:
+        colorB(port,tcp_sock)
+
+def nagios_sends(data_t,rCount,bCount,gCount,data_lst,port,
+                 lastdata_t,lastrCount,lastbCount,lastgCount):
+    data_t.join(0)
+    if data_t.is_alive() is not True:
+    # the timer joined
+    # let us know if there are new issues or resolutions
+        if bCount[0] > lastbCount[0]:
+            flash(2,port)
+        elif gCount[0] > lastgCount[0]:
+            flash(3,port)
+        elif rCount[0] > lastrCount[0]:
+            flash(1,port)
+        # copy the data to be thread safe
+        lastdata_lst = copy(data_lst)
+        lastrCount = copy(rCount)
+        lastbCount = copy(bCount)
+        lastgCount = copy(gCount)
+        # clean up
+        data_lst = []
+        rCount = [0]
+        bCount = [0]
+        gCount = [0]
+        # and set the timer to run again
+        data_t = threading.Timer(60.0, getNagData,
+                    args=(hl_params, auth_obj,
+                    sl_params, status_url, timeout, ccache_file,
+                    data_lst, rCount, bCount, gCount, port))
+        data_t.start()
+    # display the data
+    pushNagFrame(offset, tcp_sock, lastFrame, lastdata_lst, lastrCount,
+                lastbCount, lastgCount,port)
+    return data_t
+
+def nagios_setup(data_lst, rCount, bCount, gCount, port,
+                 lastdata_list, lastrCount, lastbCount, lastgCount):
+    data_i = threading.Thread(target=getNagData, args=(hl_params,
+        auth_obj, sl_params, status_url, timeout, data_lst,
+        rCount, bCount, gCount, port))
+    print(time.strftime('[%H:%M:%S]') + ' Getting inital data...')
+    data_i.start()
+    data_i.join()
+    # copy the first set of data to be thread safe
+    lastdata_lst = copy(data_lst)
+    lastrCount = copy(rCount)
+    lastbCount = copy(bCount)
+    lastgCount = copy(gCount)
+    data_lst = []
+    rCount = [0]
+    bCount = [0]
+    gCount = [0]
+    flash(1,port)
+    print(time.strftime('[%H:%M:%S]') + ' Here we go.')
+    data_t = threading.Timer(60.0, getNagData, args=(hl_params,
+        auth_obj, sl_params, status_url, timeout,
+        data_lst, rCount, bCount, gCount, port))
+    data_t.start()
+    return data_t
 
 def quit_program(quit_list):
     print(time.strftime('[%H:%M:%S]')+' Exiting...')
@@ -410,7 +437,7 @@ def quit_program(quit_list):
         else:
             sendSCH(maxBright,maxBright,maxBright,quit_list['port'],quit_list['tcp_sock'])
             sendSCH(maxBright,maxBright,maxBright,quit_list['port'],quit_list['tcp_sock'])
-    if 'port' in quit_list:
+    if  quit_list['port'] != 'NULL':
         quit_list['port'].close()
     if 'tcp_sock' in quit_list:
             quit_list['tcp_sock'].close()
@@ -716,16 +743,16 @@ def write(i,p,r,g,b,port,tcp_sock_local):
     #           print 1./(time.clock()-lW)
     lW=time.monotonic()
 
-def flash(color, e=None):
-    for i in xrange(0, 3):
-        if color == r:
-            write(pA, 0, rBrightR, rBrightG, rBrightB, tcp_sock)
-        elif color == b:
-            write(pA, 0, bBrightR, bBrightG, bBrightB, tcp_sock)
-        elif color == g:
-            write(pA, 0, gBrightR, gBrightG, gBrightB, tcp_sock)
+def flash(color, port, e=None):
+    for i in range(0, 3):
+        if color == 1:
+            write(pA, 0, rBrightR, rBrightG, rBrightB, port, tcp_sock)
+        elif color == 2:
+            write(pA, 0, bBrightR, bBrightG, bBrightB, port, tcp_sock)
+        elif color == 3:
+            write(pA, 0, gBrightR, gBrightG, gBrightB, port, tcp_sock)
         time.sleep(.5)
-        write(pA, 0, 0, 0, 0, tcp_sock)
+        write(pA, 0, 0, 0, 0, port, tcp_sock)
         time.sleep(.2)
     if e is not None:
         print(e)
@@ -736,7 +763,7 @@ def initccache(ccache, princ, keytab):
     ccache.init_creds_keytab(keytab=keytab, principal=princ)
 
 def getNagData(hl_params, auth_obj, sl_params, status_url, timeout, data_lst,
-             rCount, bCount, gCount):
+             rCount, bCount, gCount, port):
     try:
         # pull the hoststatus json
         hl = requests.get(status_url, params=hl_params, verify=False,
@@ -748,27 +775,27 @@ def getNagData(hl_params, auth_obj, sl_params, status_url, timeout, data_lst,
             if (hl['data']['hostlist'][h]['status'] == 2 or
                 hl['data']['hostlist'][h]['problem_has_been_acknowledged']
                 is True):
-                data_lst.append(r)
+                data_lst.append(1)
                 rCount[0] = rCount[0] + 1
             else:
-                data_lst.append(b)
+                data_lst.append(2)
                 bCount[0] = bCount[0] + 1
             if h in sl['data']['servicelist']:
                 for s in sorted(sl['data']['servicelist'][h]):
                     if (sl['data']['servicelist'][h][s]['status'] == 2 or
                             sl['data']['servicelist'][h][s]
                             ['problem_has_been_acknowledged'] is True):
-                        data_lst.append(r)
+                        data_lst.append(1)
                         rCount[0] = rCount[0] + 1
                     elif sl['data']['servicelist'][h][s]['status'] == 4:
-                        data_lst.append(g)
+                        data_lst.append(3)
                         gCount[0] = gCount[0] + 1
                     else:
-                        data_lst.append(b)
+                        data_lst.append(2)
                         bCount[0] = bCount[0] + 1
         data_lst.extend([0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
     except Exception as e:
-        flash(g, e)
+        flash(3, port, e)
 
 def getNagDataWithKrb(ccache, princ, keytab, hl_params, auth_obj, sl_params,
                    status_url, timeout, ccache_file, data_lst, rCount,
@@ -780,18 +807,18 @@ def getNagDataWithKrb(ccache, princ, keytab, hl_params, auth_obj, sl_params,
     # remove the ccache
     os.remove(ccache_file)
 
-def pushNagFrame(offset, tcp_sock, lastFrame, data_lst, rCount, bCount, gCount):
+def pushNagFrame(offset, tcp_sock, lastFrame, data_lst, rCount, bCount, gCount, port):
     if rCount[0] > numLights / 2:
-        write(pAns, 0, rBrightR, rBrightG, rBrightB, tcp_sock)
+        write(pAns, 0, rBrightR, rBrightG, rBrightB, port, tcp_sock)
         newFrame = [r] * numLights
     elif bCount[0] > numLights / 2:
-        write(pAns, 0, bBrightR, bBrightG, bBrightB, tcp_sock)
+        write(pAns, 0, bBrightR, bBrightG, bBrightB, port, tcp_sock)
         newFrame = [b] * numLights
     elif gCount[0] > numLights / 2:
-        write(pAns, 0, gBrightR, gBrightG, gBrightB, tcp_sock)
+        write(pAns, 0, gBrightR, gBrightG, gBrightB, port, tcp_sock)
         newFrame = [g] * numLights
     elif rCount[0] == 0 and bCount[0] == 0 and gCount[0] == 0:
-        flash(g, time.strftime('[%H:%M:%S]') + ' No data available.')
+        flash(3, port, time.strftime('[%H:%M:%S]') + ' No data available.')
         time.sleep(120.0)
         return
     else:
@@ -802,33 +829,33 @@ def pushNagFrame(offset, tcp_sock, lastFrame, data_lst, rCount, bCount, gCount):
     lenData_lst = len(data_lst_local)
     data_lst_local = data_lst_local+data_lst_local
     for ledIndex, d in enumerate(data_lst_local[offset[0]:
-                                 offset[0]+numLightsM2]):
+                                 offset[0]+numLights - 2]):
         if d != newFrame[ledIndex]:
-            if d == r:
-                write(nsns, ledIndex, rBrightR, rBrightG, rBrightB, tcp_sock)
-                newFrame[ledIndex] = r
-            elif d == b:
-                write(nsns, ledIndex, bBrightR, bBrightG, bBrightB, tcp_sock)
-                newFrame[ledIndex] = b
-            elif d == g:
-                write(nsns, ledIndex, gBrightR, gBrightG, gBrightB, tcp_sock)
-                newFrame[ledIndex] = g
+            if d == 1:
+                write(nsns, ledIndex, rBrightR, rBrightG, rBrightB, port, tcp_sock)
+                newFrame[ledIndex] = 1
+            elif d == 2:
+                write(nsns, ledIndex, bBrightR, bBrightG, bBrightB, port, tcp_sock)
+                newFrame[ledIndex] = 2
+            elif d == 3:
+                write(nsns, ledIndex, gBrightR, gBrightG, gBrightB, port, tcp_sock)
+                newFrame[ledIndex] = 3
             elif d == 0:
-                write(nsns, ledIndex, 0, 0, 0, tcp_sock)
+                write(nsns, ledIndex, 0, 0, 0, port, tcp_sock)
                 newFrame[ledIndex] = 0
-    d = data_lst_local[numLightsM1]
-    if d == r:
-        write(ns, numLightsM1, rBrightR, rBrightG, rBrightB, tcp_sock)
-        newFrame[numLightsM1] = r
-    elif d == b:
-        write(ns, numLightsM1, bBrightR, bBrightG, bBrightB, tcp_sock)
-        newFrame[numLightsM1] = b
-    elif d == g:
-        write(ns, numLightsM1, gBrightR, gBrightG, gBrightB, tcp_sock)
-        newFrame[numLightsM1] = g
+    d = data_lst_local[numLights - 1]
+    if d == 1:
+        write(ns, numLights - 1, rBrightR, rBrightG, rBrightB, port, tcp_sock)
+        newFrame[numLights - 1] = 1
+    elif d == 2:
+        write(ns, numLights -1, bBrightR, bBrightG, bBrightB, port, tcp_sock)
+        newFrame[numLights -1] = 2
+    elif d == 3:
+        write(ns, numLights - 1, gBrightR, gBrightG, gBrightB, port, tcp_sock)
+        newFrame[numLights - 1] = 3
     elif d == 0:
-        write(ns, numLightsM1, 0, 0, 0, tcp_sock)
-        newFrame[numLightsM1] = 0
+        write(ns, numLights - 1, 0, 0, 0, port, tcp_sock)
+        newFrame[numLights - 1] = 0
     offset[0] = (offset[0] + 1) % lenData_lst
     lastFrame = newFrame
 
@@ -882,8 +909,8 @@ def playerbin_message(bus,message):
         if struct.get_name() == 'spectrum':
             matches = re.search(r'magnitude=\(float\){([^}]+)}', struct.to_string())
             m = [float(x) for x in matches.group(1).split(',')]
-#            for mute_freq in range(35,37):
-#                m[freq_to_band(mute_freq)] = -60.
+            for mute_freq in range(31,32):
+                m[freq_to_band(mute_freq)] = -60.
             low  = max(m[freq_to_band(min_low_freq):freq_to_band(max_low_freq)])
             mid  = max(m[freq_to_band(min_mid_freq):freq_to_band(max_mid_freq)])
             high = max(m[freq_to_band(min_high_freq):freq_to_band(max_high_freq)])
@@ -914,9 +941,9 @@ def playerbin_message(bus,message):
 ##              client.send(osc.Message("/G", int(mid_adj)))
 ##              client.send(osc.Message("/B", int(high_adj)))
             if use_local:
-                setR('/R',low_adj)
-                setG('/G',mid_adj)
-                setB('/B',high_adj)
+                setR('/R',max(0,low_adj))
+                setG('/G',max(0,mid_adj))
+                setB('/B',max(0,high_adj))
             else:
                 bb = pythonosc.osc_bundle_builder.OscBundleBuilder(pythonosc.osc_bundle_builder.IMMEDIATELY)
                 mb = pythonosc.osc_message_builder.OscMessageBuilder(address="/R")
@@ -965,7 +992,7 @@ else:
 #print msg
 # To find devices
 # sink=Gst.ElementFactory.make("directsoundsrc")
-# 
+#
 #caps audio/x-raw, format=(string)S16LE, layout=(string)interleaved, rate=(int)44100, channels=(int)2
 #
 
