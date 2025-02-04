@@ -158,6 +158,8 @@ if psyon:
 use_nagios=config.getint("hppm_proc.py", "use_nagios")
 if use_nagios:
     import requests
+    from requests.packages import urllib3
+    requests.packages.urllib3.disable_warnings(category=urllib3.exceptions.InsecureRequestWarning)
     from copy import copy
     # get ready to make the request to nagios
     status_url = config.get("hppm_proc.py", "nagios_status_uri")
@@ -169,17 +171,16 @@ if use_nagios:
     sl_params = {'query': 'servicelist', 'details': 'true', 'hoststatus':
                  'up down unreachable pending', 'servicestatus': 'ok warning' +
                  ' critical unknown pending'}
-# nagios conf colors
-    # these control the colors
-    rBrightR = 50
-    rBrightG = 0
-    rBrightB = 0
-    bBrightR = 0
-    bBrightG = 0
-    bBrightB = 50
-    gBrightR = 0
-    gBrightG = 50
-    gBrightB = 0
+    rBrightR = config.getint("hppm_proc.py", "rBrightR")
+    rBrightG = config.getint("hppm_proc.py", "rBrightG")
+    rBrightB = config.getint("hppm_proc.py", "rBrightB")
+    bBrightR = config.getint("hppm_proc.py", "bBrightR")
+    bBrightG = config.getint("hppm_proc.py", "bBrightG")
+    bBrightB = config.getint("hppm_proc.py", "bBrightB")
+    gBrightR = config.getint("hppm_proc.py", "gBrightR")
+    gBrightG = config.getint("hppm_proc.py", "gBrightG")
+    gBrightB = config.getint("hppm_proc.py", "gBrightB")
+
 tcp_sock='NULL'
 quit_list={}
 
@@ -290,6 +291,7 @@ def main():
             quit_list['osc']=osc
             quit_list['osct']=osct
         if use_nagios:
+            # make some mutables for pass by ref
             data_lst = []
             rCount = [0]
             bCount = [0]
@@ -301,19 +303,24 @@ def main():
             lastgCount = [0]
             lastFrame = [None] * numLights
             quiet_sets=0
+            nagQuietThreshR=config.getint("hppm_proc.py", "nagQuietThreshR")
+            nagQuietThreshG=config.getint("hppm_proc.py", "nagQuietThreshG")
+            nagQuietThreshB=config.getint("hppm_proc.py", "nagQuietThreshB")
+            nagQuietFrames=config.getint("hppm_proc.py", "nagQuietFrames")
             data_t=nagios_setup(data_lst, rCount, bCount, gCount, port,
                                 lastdata_lst, lastrCount, lastbCount, lastgCount)
+            quit_list['nagios']=data_t
         while True:
             avg()
             if use_nagios:
-                if nwR < 9 and nwG < 4 and nwB < 4:
-                    quiet_sets=quiet_sets+1
+                if nwR <= nagQuietThreshR and nwG <= nagQuietThreshG and nwB < nagQuietThreshB:
+                    quiet_srts=quiet_sets+1
                 else:
                     quiet_sets=0
-#conf time before nagios
-                if quiet_sets > 60 * 15:
-                    nagios_sends(data_t,data_lst, rCount, bCount, gCount, port,
-                         lastdata_lst, lastrCount, lastbCount, lastgCount)
+                if quiet_sets > nagQuietFrames:
+                    data_t=nagios_sends(data_t,data_lst, rCount, bCount, gCount, port, offset,
+                         lastdata_lst, lastrCount, lastbCount, lastgCount, lastFrame)
+                    quit_list['nagios']=data_t
                     time.sleep(.2)
                 else:
                     main_sends(port)
@@ -356,8 +363,8 @@ def main_sends(port):
     else:
         colorB(port,tcp_sock)
 
-def nagios_sends(data_t,rCount,bCount,gCount,data_lst,port,
-                 lastdata_t,lastrCount,lastbCount,lastgCount):
+def nagios_sends(data_t,rCount,bCount,gCount,data_lst,port,offset,
+                 lastdata_t,lastrCount,lastbCount,lastgCount,lastFrame):
     data_t.join(0)
     if data_t.is_alive() is not True:
     # the timer joined
@@ -394,9 +401,10 @@ def nagios_setup(data_lst, rCount, bCount, gCount, port,
     data_i = threading.Thread(target=getNagData, args=(hl_params,
         auth_obj, sl_params, status_url, timeout, data_lst,
         rCount, bCount, gCount, port))
-    print(time.strftime('[%H:%M:%S]') + ' Getting inital data...')
+    print(time.strftime('[%H:%M:%S]') + ' Getting initial nagios data...')
     data_i.start()
     data_i.join()
+    print(time.strftime('[%H:%M:%S]') + ' Got initial nagios data.')
     # copy the first set of data to be thread safe
     lastdata_lst = copy(data_lst)
     lastrCount = copy(rCount)
@@ -406,8 +414,6 @@ def nagios_setup(data_lst, rCount, bCount, gCount, port,
     rCount = [0]
     bCount = [0]
     gCount = [0]
-    flash(1,port)
-    print(time.strftime('[%H:%M:%S]') + ' Here we go.')
     data_t = threading.Timer(60.0, getNagData, args=(hl_params,
         auth_obj, sl_params, status_url, timeout,
         data_lst, rCount, bCount, gCount, port))
@@ -424,7 +430,7 @@ def quit_program(quit_list):
         gi_thread.quit()
     if 'nagios' in quit_list:
         quit_list['nagios'].cancel()
-        if quit_list['nagios'].isAlive():
+        if quit_list['nagios'].is_alive():
             quit_list['nagios'].join()
     if 'osc' in quit_list:
         quit_list['osc'].close()
