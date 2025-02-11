@@ -383,7 +383,7 @@ def nagios_setup(port):
         data_i = executor.submit(getNagData, hl_params, auth_obj, sl_params, status_url, timeout, port)
         data_lst, rCount, bCount, gCount = data_i.result()
     print(time.strftime('[%H:%M:%S]') + ' Got initial nagios data.')
-    executor = concurrent.futures.ThreadPoolExecutor(initializer=time.sleep(5))
+    executor = concurrent.futures.ThreadPoolExecutor(initializer=time.sleep(60))
     data_t = executor.submit(getNagData, hl_params,
         auth_obj, sl_params, status_url, timeout, port)
     return executor, data_t, data_lst, rCount, bCount, gCount
