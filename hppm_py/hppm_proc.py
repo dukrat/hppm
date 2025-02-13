@@ -368,7 +368,7 @@ def nagios_sends(executor, data_t, port, offset, lastrCount, lastbCount, lastgCo
         elif rCount > lastrCount:
             flash(1, port)
         data_t = executor.submit(getNagData, hl_params,
-            auth_obj, sl_params, status_url, timeout, port)
+            auth_obj, sl_params, status_url, timeout, port, 60)
         # display the data
         offset, newFrame = pushNagFrame(offset, tcp_sock, lastFrame, data_lst, rCount,
             bCount, gCount, port)
@@ -380,12 +380,12 @@ def nagios_sends(executor, data_t, port, offset, lastrCount, lastbCount, lastgCo
 def nagios_setup(port):
     print(time.strftime('[%H:%M:%S]') + ' Getting initial nagios data...')
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        data_i = executor.submit(getNagData, hl_params, auth_obj, sl_params, status_url, timeout, port)
+        data_i = executor.submit(getNagData, hl_params, auth_obj, sl_params, status_url, timeout, port, 0)
         data_lst, rCount, bCount, gCount = data_i.result()
     print(time.strftime('[%H:%M:%S]') + ' Got initial nagios data.')
-    executor = concurrent.futures.ThreadPoolExecutor(initializer=time.sleep(60))
+    executor = concurrent.futures.ThreadPoolExecutor()
     data_t = executor.submit(getNagData, hl_params,
-        auth_obj, sl_params, status_url, timeout, port)
+        auth_obj, sl_params, status_url, timeout, port, 60)
     return executor, data_t, data_lst, rCount, bCount, gCount
 
 def quit_program(quit_list):
@@ -727,7 +727,8 @@ def initccache(ccache, princ, keytab):
     ccache.init(princ)
     ccache.init_creds_keytab(keytab=keytab, principal=princ)
 
-def getNagData(hl_params, auth_obj, sl_params, status_url, timeout, port):
+def getNagData(hl_params, auth_obj, sl_params, status_url, timeout, port, sleep):
+    time.sleep(sleep)
     data_lst = []
     rCount = 0
     bCount = 0
@@ -752,7 +753,9 @@ def getNagData(hl_params, auth_obj, sl_params, status_url, timeout, port):
                 for s in sorted(sl['data']['servicelist'][h]):
                     if (sl['data']['servicelist'][h][s]['status'] == 2 or
                             sl['data']['servicelist'][h][s]
-                            ['problem_has_been_acknowledged'] is True):
+                            ['problem_has_been_acknowledged'] is True or
+                            sl['data']['servicelist'][h][s]
+                            ['notifications_enabled'] is False):
                         data_lst.append(1)
                         rCount += 1
                     elif sl['data']['servicelist'][h][s]['status'] == 4:
